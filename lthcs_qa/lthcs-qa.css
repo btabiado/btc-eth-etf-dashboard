@@ -1,0 +1,673 @@
+/* =========================================================================
+   LTHCS QA & Audit page
+   Layered on top of ../lthcs_tab/lthcs.css for shared design tokens
+   (band palette, dark theme, font stack). Only contains styles unique
+   to this page; everything else is inherited.
+
+   Based on the qa-audit-desktop mockup with a responsive overlay that
+   borrows the single-column stacking from qa-audit-mobile:
+
+     - >= 1024px : full 6-up banner, 2-col row grids
+     - 640–1023  : 3-up banner, 2-col rows still side-by-side
+     - < 640px   : single column everywhere, 2-up grids inside cards
+     - < 420px   : tightest mobile, 1-up sector tiles, stacked nav
+
+   All class names are namespaced `qa-*` to avoid colliding with
+   lthcs_tab/lthcs.css or lthcs_health/lthcs-health.css when the staged
+   files end up under the same /lthcs/ tree.
+   ========================================================================= */
+
+.qa-page {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 20px 24px 48px;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.45;
+  background: var(--bg-page);
+}
+
+.mono { font-family: var(--font-mono); }
+
+/* ---------- Header ---------- */
+.qa-hdr {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.qa-hdr-title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.qa-hdr-title span {
+  color: var(--text-tertiary);
+  font-weight: 400;
+  margin-left: 8px;
+  font-size: 13px;
+}
+.qa-hdr-meta {
+  display: flex;
+  gap: 18px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+  align-items: center;
+}
+.qa-hdr-meta b { color: var(--text-primary); font-weight: 600; }
+.qa-hdr-nav {
+  display: flex;
+  gap: 6px;
+  margin-left: 18px;
+  flex-wrap: wrap;
+}
+.qa-hdr-nav a {
+  padding: 4px 9px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm, 6px);
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+.qa-hdr-nav a:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+  background: var(--bg-chip);
+  text-decoration: none;
+}
+
+/* ---------- Banner (verdict strip) ---------- */
+.qa-banner {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 18px;
+  align-items: stretch;
+  background: linear-gradient(180deg, rgba(74, 143, 95, 0.10), rgba(74, 143, 95, 0.02));
+  border: 1px solid rgba(111, 209, 140, 0.35);
+  border-radius: var(--radius-lg, 14px);
+  padding: 14px 18px;
+  margin-bottom: 18px;
+}
+.qa-banner.warn {
+  background: linear-gradient(180deg, rgba(233, 192, 74, 0.10), rgba(233, 192, 74, 0.02));
+  border-color: rgba(233, 192, 74, 0.45);
+}
+.qa-banner-verdict {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  border-right: 1px solid var(--border-subtle);
+  padding-right: 16px;
+}
+.qa-banner-verdict .vstate {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.qa-banner-verdict .vstate.warn { color: var(--warn); }
+.qa-banner-verdict .vstate.ok { color: var(--ok); }
+.qa-banner-verdict .vsub {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.qa-banner-meta {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 14px;
+}
+.qa-banner-meta .bm {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.qa-banner-meta .bm-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+}
+.qa-banner-meta .bm-val {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.qa-banner-meta .bm-val.ok { color: var(--ok); }
+.qa-banner-meta .bm-val.warn { color: var(--warn); }
+.qa-banner-meta .bm-val.bad { color: var(--danger); }
+.qa-banner-meta .bm-val .sub {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  margin-left: 4px;
+}
+
+/* ---------- Grid layout ---------- */
+.qa-row {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.qa-row-7-5 { grid-template-columns: 7fr 5fr; }
+.qa-row-6-6 { grid-template-columns: 1fr 1fr; }
+.qa-row-5-7 { grid-template-columns: 5fr 7fr; }
+
+.qa-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md, 10px);
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* allow children to shrink in grid cells */
+}
+.qa-card-h {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.qa-card-h h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-primary);
+}
+.qa-card-h .sub {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+.qa-pill {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--bg-chip);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+.qa-pill.ok { background: rgba(111, 209, 140, 0.12); border-color: rgba(111, 209, 140, 0.30); color: var(--ok); }
+.qa-pill.warn { background: rgba(233, 192, 74, 0.10); border-color: rgba(233, 192, 74, 0.32); color: var(--warn); }
+.qa-pill.bad { background: rgba(226, 109, 92, 0.10); border-color: rgba(226, 109, 92, 0.32); color: var(--danger); }
+
+/* ---------- Tables ---------- */
+.qa-table-wrap {
+  /* Tables stay readable on narrow screens — let them scroll horizontally
+     rather than wrapping cells. The card boundary keeps them contained. */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.qa-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.qa-table th, .qa-table td {
+  text-align: left;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+.qa-table th {
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10.5px;
+  background: var(--bg-elevated);
+  position: sticky;
+  top: 0;
+}
+.qa-table tr:last-child td { border-bottom: 0; }
+.qa-table tr:hover td { background: var(--bg-card-hover); }
+.qa-table td.num,
+.qa-table th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}
+.qa-table td.mono { font-family: var(--font-mono); }
+
+/* dot indicators */
+.qa-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.qa-dot.ok { background: var(--ok); box-shadow: 0 0 6px rgba(111, 209, 140, 0.4); }
+.qa-dot.warn { background: var(--warn); }
+.qa-dot.bad { background: var(--danger); }
+.qa-dot.muted { background: var(--text-tertiary); }
+
+/* delta arrows */
+.qa-delta-up   { color: var(--drift-improving-bright); }
+.qa-delta-dn   { color: var(--drift-declining-bright); }
+.qa-delta-flat { color: var(--text-tertiary); }
+
+/* ---------- Coverage matrix (pillar table) ---------- */
+.qa-pillar-matrix td.bar-cell {
+  position: relative;
+  padding-right: 14px;
+}
+.qa-bar {
+  position: relative;
+  height: 4px;
+  width: 100%;
+  background: var(--bg-input);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 3px;
+}
+.qa-bar > i {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  background: var(--band-high-bright);
+}
+.qa-bar.warn > i { background: var(--band-monitor-bright); }
+.qa-bar.bad > i  { background: var(--band-review-bright); }
+
+/* ---------- Sparkline (composite drift) ---------- */
+.qa-spark-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.qa-spark-svg {
+  width: 100%;
+  height: 110px;
+  display: block;
+}
+.qa-spark-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+}
+.qa-spark-summary {
+  margin: 2px 0 6px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+.qa-spark-events {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  margin-top: 4px;
+}
+.qa-ev {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 7px;
+  background: var(--bg-chip);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.qa-ev b { color: var(--text-primary); font-weight: 600; }
+
+/* ---------- Run timeline strip ---------- */
+.qa-runs-strip {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.qa-run-cell {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm, 6px);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: relative;
+  min-width: 0;
+}
+.qa-run-cell.ok   { border-color: rgba(111, 209, 140, 0.35); }
+.qa-run-cell.warn { border-color: rgba(233, 192, 74, 0.35); }
+.qa-run-cell.skip { opacity: 0.55; }
+.qa-run-cell .rd {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.02em;
+}
+.qa-run-cell .rs {
+  font-size: 11px;
+  color: var(--text-primary);
+}
+.qa-run-cell .rt {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+/* note text between strip + table */
+.qa-note {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin: 0 0 10px;
+  font-family: var(--font-mono);
+}
+
+/* ---------- Security panel ---------- */
+.qa-sec-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.qa-sec-tile {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm, 6px);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.qa-sec-tile .lbl {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+}
+.qa-sec-tile .val {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.qa-sec-tile .sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+.qa-sec-subhead {
+  margin: 4px 0 6px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+.qa-sec-commits {
+  font-size: 11.5px;
+  font-family: var(--font-mono);
+}
+.qa-sec-commits .row {
+  display: grid;
+  grid-template-columns: 70px 80px 1fr 70px;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--border-subtle);
+  align-items: baseline;
+  margin: 0;
+}
+.qa-sec-commits .row:last-child { border-bottom: 0; }
+.qa-sec-commits .sha { color: var(--accent); }
+.qa-sec-commits .path { color: var(--text-secondary); }
+.qa-sec-commits .msg {
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.qa-sec-commits .when { color: var(--text-tertiary); text-align: right; }
+
+/* ---------- Universe / sector grid ---------- */
+.qa-sector-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+.qa-sec-cell {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm, 6px);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.qa-sec-cell .name {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.qa-sec-cell .n {
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+.qa-sec-cell .delta {
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+}
+
+/* universe diff list */
+.qa-univ-diff {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+.qa-univ-diff .panel {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm, 6px);
+  padding: 8px 10px;
+}
+.qa-univ-diff h4 {
+  margin: 0 0 6px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+.qa-univ-diff ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-primary);
+}
+.qa-univ-diff li {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  gap: 8px;
+  padding: 2px 0;
+}
+.qa-univ-diff li span.tag {
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+}
+
+/* ---------- Movers table ---------- */
+.qa-movers .tick { font-weight: 600; }
+.qa-movers .from-to { color: var(--text-secondary); font-family: var(--font-mono); }
+.qa-movers .reason { color: var(--text-secondary); font-size: 11.5px; }
+.qa-movers .reason b { color: var(--text-primary); font-weight: 600; }
+.qa-band-chip {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-family: var(--font-sans);
+}
+.qa-band-chip.review       { background: rgba(122, 46, 31, 0.40); color: #F1B7AB; }
+.qa-band-chip.weakening    { background: rgba(184, 90, 62, 0.30); color: #F3B7A4; }
+.qa-band-chip.monitor      { background: rgba(216, 145, 72, 0.25); color: #F4C99C; }
+.qa-band-chip.constructive { background: rgba(201, 162, 39, 0.25); color: #F1D87B; }
+
+/* ---------- Footer ---------- */
+.qa-foot {
+  margin-top: 22px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.qa-foot code {
+  font-family: var(--font-mono);
+  background: var(--bg-chip);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* tiny stuff */
+.qa-hr-soft {
+  border: 0;
+  border-top: 1px dashed var(--border-subtle);
+  margin: 8px 0;
+}
+
+/* =========================================================================
+   RESPONSIVE BREAKPOINTS
+   Borrowed arrangement cues from qa-audit-mobile/index.html:
+   stack everything vertically, collapse 6-up to 2-up then 1-up,
+   keep tables horizontally scrollable inside their card boundaries.
+   ========================================================================= */
+
+/* Tablet / narrow desktop — keep 2-col rows but tighten 6-ups to 3-ups */
+@media (max-width: 1023px) {
+  .qa-page { padding: 16px 16px 40px; }
+
+  .qa-banner {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .qa-banner-verdict {
+    border-right: 0;
+    border-bottom: 1px solid var(--border-subtle);
+    padding-right: 0;
+    padding-bottom: 10px;
+  }
+  .qa-banner-meta {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .qa-sector-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Phone — collapse everything to a single column */
+@media (max-width: 639px) {
+  .qa-page {
+    padding: 12px 12px 32px;
+    font-size: 13px;
+  }
+
+  .qa-hdr {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .qa-hdr-meta {
+    width: 100%;
+    gap: 10px 14px;
+  }
+  .qa-hdr-nav {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .qa-banner-meta {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  /* 2-col row grids → single column */
+  .qa-row,
+  .qa-row-7-5,
+  .qa-row-6-6,
+  .qa-row-5-7 {
+    grid-template-columns: 1fr;
+  }
+
+  /* 7-cell run strip is too dense on phone → wrap to a 4-up grid */
+  .qa-runs-strip {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* Security & universe diff inner panels also stack */
+  .qa-sec-grid,
+  .qa-univ-diff {
+    grid-template-columns: 1fr;
+  }
+
+  .qa-sector-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* Tighten the commits row to fit narrow screens — drop the timestamp
+     column inline; it's the least useful on phone. */
+  .qa-sec-commits .row {
+    grid-template-columns: 64px 1fr;
+    grid-template-areas:
+      "sha  msg"
+      "path when";
+    row-gap: 2px;
+  }
+  .qa-sec-commits .sha  { grid-area: sha; }
+  .qa-sec-commits .msg  { grid-area: msg; white-space: normal; }
+  .qa-sec-commits .path { grid-area: path; }
+  .qa-sec-commits .when { grid-area: when; text-align: left; }
+
+  .qa-foot {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+/* Tightest phone — single-column sector grid + 3-up runs */
+@media (max-width: 419px) {
+  .qa-sector-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .qa-runs-strip {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .qa-banner-meta {
+    grid-template-columns: 1fr;
+  }
+}

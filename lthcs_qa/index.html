@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Security headers mirror the lthcs_health page (P2 #9). CSP is the
+         primary defense; X-Content-Type-Options + Referrer-Policy are
+         best-effort meta-tag equivalents since GitHub Pages can't set
+         HTTP headers. See docs/lthcs-csp-sri-2026-05-20.md. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <title>LTHCS &middot; QA &amp; Audit</title>
+    <!--
+      Inherits LTHCS design tokens (band colors, dark theme, fonts) from
+      the card-view stylesheet. In production both pages stage under
+      /lthcs/, so this resolves at /lthcs/lthcs_tab/lthcs.css. The dev
+      server (python3 -m http.server in repo root) serves /lthcs_tab/
+      sibling to /lthcs_qa/, so the ../lthcs_tab/ path works in both
+      environments without conditional logic — same pattern as
+      lthcs_health/index.html.
+    -->
+    <link rel="stylesheet" href="../lthcs_tab/lthcs.css" />
+    <link rel="stylesheet" href="./lthcs-qa.css" />
+  </head>
+  <body>
+    <div class="qa-page">
+
+      <!-- ============================================================
+           HEADER
+           ============================================================ -->
+      <header class="qa-hdr">
+        <h1 class="qa-hdr-title">LTHCS &middot; QA &amp; Audit
+          <span>read-only audit surface</span>
+        </h1>
+        <div class="qa-hdr-meta">
+          <span>generated <b class="mono">2026-05-20 14:32:18 UTC</b></span>
+          <span>snapshot <b class="mono">2026-05-20</b></span>
+          <span>model <b class="mono">v1.1.0</b></span>
+          <nav class="qa-hdr-nav" aria-label="LTHCS pages">
+            <a href="../health/">Health</a>
+            <a href="../health/pipeline.html">Pipeline</a>
+            <a href="../health/quality.html">Quality</a>
+            <a href="../">Card view</a>
+          </nav>
+        </div>
+      </header>
+
+      <!-- ============================================================
+           VERDICT BANNER — the 5-second answer
+           ============================================================ -->
+      <section class="qa-banner warn" aria-label="Overall verdict">
+        <div class="qa-banner-verdict">
+          <span class="vstate warn">1 ISSUE</span>
+          <span class="vsub">pipeline clean &middot; quality CRITICAL band distribution &middot; security clean</span>
+        </div>
+        <div class="qa-banner-meta">
+          <div class="bm">
+            <span class="bm-label">Last run</span>
+            <span class="bm-val ok">23:00 UTC <span class="sub">+02:47</span></span>
+          </div>
+          <div class="bm">
+            <span class="bm-label">Tickers scored</span>
+            <span class="bm-val">167<span class="sub">/168 active</span></span>
+          </div>
+          <div class="bm">
+            <span class="bm-label">Pillar coverage</span>
+            <span class="bm-val ok">96.9%<span class="sub">avg</span></span>
+          </div>
+          <div class="bm">
+            <span class="bm-label">Band churn 30d</span>
+            <span class="bm-val">5.1%<span class="sub">acceptable</span></span>
+          </div>
+          <div class="bm">
+            <span class="bm-label">Security</span>
+            <span class="bm-val ok">0 alerts<span class="sub">CodeQL/DEP/TH</span></span>
+          </div>
+          <div class="bm">
+            <span class="bm-label">Pushed by</span>
+            <span class="bm-val">lthcs-bot<span class="sub">unsigned &middot; workflow</span></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================
+           ROW 1 — Pipeline runs  +  Composite drift sparkline
+           ============================================================ -->
+      <section class="qa-row qa-row-7-5">
+
+        <!-- PIPELINE RUNS — last 7 -->
+        <article class="qa-card">
+          <header class="qa-card-h">
+            <h2>Pipeline runs <span class="sub">&mdash; last 7 daily cron firings (23:00 UTC)</span></h2>
+            <span class="qa-pill ok"><span class="qa-dot ok"></span>7/7 success</span>
+          </header>
+
+          <div class="qa-runs-strip">
+            <div class="qa-run-cell skip">
+              <span class="rd">2026-05-13</span>
+              <span class="rs"><span class="qa-dot ok"></span> ok</span>
+              <span class="rt">03:42</span>
+            </div>
+            <div class="qa-run-cell skip">
+              <span class="rd">2026-05-14</span>
+              <span class="rs"><span class="qa-dot ok"></span> ok</span>
+              <span class="rt">02:51</span>
+            </div>
+            <div class="qa-run-cell skip">
+              <span class="rd">2026-05-15</span>
+              <span class="rs"><span class="qa-dot ok"></span> ok</span>
+              <span class="rt">03:08</span>
+            </div>
+            <div class="qa-run-cell skip">
+              <span class="rd">2026-05-16</span>
+              <span class="rs"><span class="qa-dot ok"></span> ok</span>
+              <span class="rt">02:39</span>
+            </div>
+            <div class="qa-run-cell ok">
+              <span class="rd">2026-05-17</span>
+              <span class="rs"><span class="qa-dot ok"></span> ok</span>
+              <span class="rt">02:55</span>
+            </div>
+            <div class="qa-run-cell ok">
+              <span class="rd">2026-05-18</span>
+              <span class="rs"><span class="qa-dot ok"></span> ok</span>
+              <span class="rt">03:11</span>
+            </div>
+            <div class="qa-run-cell ok" title="Today">
+              <span class="rd">2026-05-20</span>
+              <span class="rs"><span class="qa-dot ok"></span> ok</span>
+              <span class="rt">02:47</span>
+            </div>
+          </div>
+
+          <p class="qa-note">
+            note &middot; 2026-05-19 missing snapshot was forward-filled by today's <code>--catch-up</code> pass
+            (commit <a href="#">fe6436d</a>, 09:57 ET).
+          </p>
+
+          <div class="qa-table-wrap">
+            <table class="qa-table">
+              <thead>
+                <tr>
+                  <th>Run</th>
+                  <th>Trigger</th>
+                  <th>Pushed by</th>
+                  <th class="num">Snapshot bytes</th>
+                  <th class="num">+/- vs prev</th>
+                  <th>Skipped</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="mono">2026-05-20 23:00</td>
+                  <td>cron</td>
+                  <td class="mono">lthcs-bot</td>
+                  <td class="num">238 KB</td>
+                  <td class="num qa-delta-flat">+0.4 KB</td>
+                  <td class="mono">thesis (AV quota)</td>
+                </tr>
+                <tr>
+                  <td class="mono">2026-05-18 23:00</td>
+                  <td>cron</td>
+                  <td class="mono">lthcs-bot</td>
+                  <td class="num">237 KB</td>
+                  <td class="num qa-delta-flat">+0.1 KB</td>
+                  <td class="mono">thesis</td>
+                </tr>
+                <tr>
+                  <td class="mono">2026-05-17 23:00</td>
+                  <td>cron</td>
+                  <td class="mono">lthcs-bot</td>
+                  <td class="num">237 KB</td>
+                  <td class="num qa-delta-flat">-0.0 KB</td>
+                  <td class="mono">thesis</td>
+                </tr>
+                <tr>
+                  <td class="mono">2026-05-16 23:00</td>
+                  <td>cron</td>
+                  <td class="mono">lthcs-bot</td>
+                  <td class="num">237 KB</td>
+                  <td class="num qa-delta-flat">+0.2 KB</td>
+                  <td class="mono">thesis</td>
+                </tr>
+                <tr>
+                  <td class="mono">2026-05-15 23:00</td>
+                  <td>cron</td>
+                  <td class="mono">lthcs-bot</td>
+                  <td class="num">237 KB</td>
+                  <td class="num qa-delta-flat">+0.1 KB</td>
+                  <td class="mono">thesis</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <!-- COMPOSITE DRIFT -->
+        <article class="qa-card">
+          <header class="qa-card-h">
+            <h2>Composite drift <span class="sub">&mdash; 30 days, universe-aggregate score</span></h2>
+            <span class="qa-pill warn"><span class="qa-dot warn"></span>declining</span>
+          </header>
+
+          <div class="qa-spark-wrap">
+            <!-- 30 daily index values 2026-04-20 → 2026-05-20.
+                 y range -28..-4; mapped to height 100..10 (svg viewBox 300x110). -->
+            <svg class="qa-spark-svg" viewBox="0 0 300 110" preserveAspectRatio="none" aria-label="Composite score, 30 days">
+              <!-- horizontal guides -->
+              <line x1="0" y1="55" x2="300" y2="55" stroke="#2A323D" stroke-width="0.5" stroke-dasharray="2,3" />
+              <line x1="0" y1="20" x2="300" y2="20" stroke="#2A323D" stroke-width="0.5" stroke-dasharray="2,3" />
+              <line x1="0" y1="90" x2="300" y2="90" stroke="#2A323D" stroke-width="0.5" stroke-dasharray="2,3" />
+
+              <!-- band shading bottom (review zone) -->
+              <rect x="0" y="78" width="300" height="32" fill="rgba(226,109,92,0.05)" />
+
+              <!-- line path -->
+              <path d="M0,32 L10.3,29 L20.7,25 L31.0,29 L41.4,25 L51.7,25 L62.1,25 L72.4,25 L82.8,25 L93.1,29 L103.4,25 L113.8,25 L124.1,25 L134.5,25 L144.8,29 L155.2,29 L165.5,32 L175.9,32 L186.2,32 L196.6,32 L206.9,32 L217.2,32 L227.6,32 L237.9,36 L248.3,36 L258.6,36 L269.0,44 L279.3,44 L289.7,80 L300,104"
+                    fill="none"
+                    stroke="#FF8775"
+                    stroke-width="1.6"
+                    vector-effect="non-scaling-stroke" />
+
+              <!-- area fill -->
+              <path d="M0,32 L10.3,29 L20.7,25 L31.0,29 L41.4,25 L51.7,25 L62.1,25 L72.4,25 L82.8,25 L93.1,29 L103.4,25 L113.8,25 L124.1,25 L134.5,25 L144.8,29 L155.2,29 L165.5,32 L175.9,32 L186.2,32 L196.6,32 L206.9,32 L217.2,32 L227.6,32 L237.9,36 L248.3,36 L258.6,36 L269.0,44 L279.3,44 L289.7,80 L300,104 L300,110 L0,110 Z"
+                    fill="rgba(255,135,117,0.08)"
+                    stroke="none" />
+
+              <!-- last 2 marker dots -->
+              <circle cx="289.7" cy="80" r="2.4" fill="#FF8775" />
+              <circle cx="300" cy="104" r="2.6" fill="#FF8775" stroke="#0E1216" stroke-width="1" />
+
+              <!-- band labels along left edge -->
+              <text x="2" y="18" font-family="ui-monospace,monospace" font-size="8" fill="#6B7280">-4</text>
+              <text x="2" y="53" font-family="ui-monospace,monospace" font-size="8" fill="#6B7280">-15</text>
+              <text x="2" y="88" font-family="ui-monospace,monospace" font-size="8" fill="#6B7280">-26</text>
+            </svg>
+
+            <div class="qa-spark-axis">
+              <span>2026-04-20</span>
+              <span>05-05</span>
+              <span>05-20 &middot; <b style="color:#FF8775">-26</b></span>
+            </div>
+
+            <hr class="qa-hr-soft" />
+
+            <p class="qa-spark-summary">
+              Composite stepped from <span class="mono">-11</span> on 05-17 to <span class="mono">-26</span> today
+              (<span class="qa-delta-dn mono">&Delta;-15</span> over 3 trading days). Driven by 13F-conviction breadth
+              flipping to <span class="mono">8 vs 90</span> (acc vs dist).
+            </p>
+
+            <div class="qa-spark-events">
+              <span class="qa-ev"><span class="qa-dot warn"></span>05-18 <b>band-lean</b> -77.2%</span>
+              <span class="qa-ev"><span class="qa-dot warn"></span>05-18 <b>insider</b> distributing</span>
+              <span class="qa-ev"><span class="qa-dot bad"></span>05-20 <b>13F</b> 8 vs 90</span>
+              <span class="qa-ev"><span class="qa-dot ok"></span>0 band churn alerts</span>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================
+           ROW 2 — Pillar coverage matrix  +  Security audit
+           ============================================================ -->
+      <section class="qa-row qa-row-7-5">
+
+        <!-- PER-PILLAR COVERAGE / QUALITY MATRIX -->
+        <article class="qa-card">
+          <header class="qa-card-h">
+            <h2>Per-pillar quality <span class="sub">&mdash; 5 pillars &times; 167 tickers &middot; audit window 30d</span></h2>
+            <span class="qa-pill warn"><span class="qa-dot warn"></span>overall CRITICAL &middot; 5/5 pillars HEALTHY &middot; band distribution misaligned</span>
+          </header>
+
+          <div class="qa-table-wrap">
+            <table class="qa-table qa-pillar-matrix">
+              <thead>
+                <tr>
+                  <th>Pillar</th>
+                  <th>Verdict</th>
+                  <th class="num">Coverage</th>
+                  <th class="num">Mean</th>
+                  <th class="num">Stdev</th>
+                  <th class="num">Floor/Ceil</th>
+                  <th class="num">30d &sigma; med</th>
+                  <th class="num">Dropped</th>
+                  <th>Top &amp; bottom outliers</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>adoption_momentum</td>
+                  <td><span class="qa-dot ok"></span>healthy</td>
+                  <td class="num bar-cell">
+                    97.6%
+                    <div class="qa-bar"><i style="width:97.6%"></i></div>
+                  </td>
+                  <td class="num">50.8</td>
+                  <td class="num">23.97</td>
+                  <td class="num mono">0 / 0</td>
+                  <td class="num">1.71</td>
+                  <td class="num mono">0</td>
+                  <td class="mono">CEG 95.7 &middot; META 93.4 &middot; NVDA 93.0 / DE 4.7 &middot; TSLA 5.4</td>
+                </tr>
+                <tr>
+                  <td>institutional_confidence</td>
+                  <td><span class="qa-dot ok"></span>healthy</td>
+                  <td class="num bar-cell">
+                    99.4%
+                    <div class="qa-bar"><i style="width:99.4%"></i></div>
+                  </td>
+                  <td class="num">48.6</td>
+                  <td class="num">28.68</td>
+                  <td class="num mono">1 / 1</td>
+                  <td class="num">4.79</td>
+                  <td class="num mono">0</td>
+                  <td class="mono">INTC 100 &middot; MU 99.4 &middot; AMD 98.2 / DASH -0.1 &middot; LCID 0.0</td>
+                </tr>
+                <tr>
+                  <td>financial_evolution</td>
+                  <td><span class="qa-dot ok"></span>healthy</td>
+                  <td class="num bar-cell">
+                    98.2%
+                    <div class="qa-bar"><i style="width:98.2%"></i></div>
+                  </td>
+                  <td class="num">55.8</td>
+                  <td class="num">17.65</td>
+                  <td class="num mono">0 / 0</td>
+                  <td class="num">0.37</td>
+                  <td class="num mono">0</td>
+                  <td class="mono">MU 93.6 &middot; TMUS 86.0 &middot; ADI 85.9 / USB 15.8 &middot; WBD 16.8</td>
+                </tr>
+                <tr>
+                  <td>thesis_integrity</td>
+                  <td><span class="qa-dot warn"></span>healthy*</td>
+                  <td class="num bar-cell">
+                    89.2%
+                    <div class="qa-bar warn"><i style="width:89.2%"></i></div>
+                  </td>
+                  <td class="num">59.2</td>
+                  <td class="num">10.50</td>
+                  <td class="num mono">0 / 0</td>
+                  <td class="num">1.72</td>
+                  <td class="num mono"><b style="color:var(--warn)">108</b></td>
+                  <td class="mono">DXCM 82.1 &middot; DDOG 81.6 &middot; BA 81.0 / BRK.B 40.0 &middot; MDLZ 41.2</td>
+                </tr>
+                <tr>
+                  <td>des</td>
+                  <td><span class="qa-dot ok"></span>healthy</td>
+                  <td class="num bar-cell">
+                    100.0%
+                    <div class="qa-bar"><i style="width:100%"></i></div>
+                  </td>
+                  <td class="num">46.8</td>
+                  <td class="num">9.55</td>
+                  <td class="num mono">0 / 0</td>
+                  <td class="num">1.41</td>
+                  <td class="num mono">0</td>
+                  <td class="mono">WFC/V/USB/TRV/SCHW 70.7 / AMT 34.3 &middot; SPG 34.3</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p class="qa-note">
+            * thesis pillar runs with <code class="mono">--skip-thesis</code> in CI
+            (Alpha Vantage quota); falls back to neutral 50 for 108/167 tickers. Local pipeline runs the full path.
+            <a href="../../docs/lthcs-parking-lot.md">parking-lot &rarr;</a>
+          </p>
+        </article>
+
+        <!-- SECURITY AUDIT -->
+        <article class="qa-card">
+          <header class="qa-card-h">
+            <h2>Security audit <span class="sub">&mdash; supply-chain &amp; sensitive paths</span></h2>
+            <span class="qa-pill ok"><span class="qa-dot ok"></span>all clean</span>
+          </header>
+
+          <div class="qa-sec-grid">
+            <div class="qa-sec-tile">
+              <span class="lbl">Dependabot</span>
+              <span class="val" style="color:var(--ok);">0 open</span>
+              <span class="sub">2 closed 2026-05-20 (P0 dotenv/requests bumps)</span>
+            </div>
+            <div class="qa-sec-tile">
+              <span class="lbl">CodeQL &middot; last scan</span>
+              <span class="val">2026-05-20 09:12 UTC</span>
+              <span class="sub">0 findings &middot; weekly + push</span>
+            </div>
+            <div class="qa-sec-tile">
+              <span class="lbl">Trufflehog &middot; last scan</span>
+              <span class="val">2026-05-19 04:00 UTC</span>
+              <span class="sub">0 secrets &middot; weekly</span>
+            </div>
+            <div class="qa-sec-tile">
+              <span class="lbl">Public-manifest audit</span>
+              <span class="val" style="color:var(--ok);">CLEAN</span>
+              <span class="sub">runs on push &middot; 2026-05-20</span>
+            </div>
+            <div class="qa-sec-tile">
+              <span class="lbl">Actions SHA-pinned</span>
+              <span class="val" style="color:var(--ok);">15/15</span>
+              <span class="sub">P4 #25 landed f8ced7a</span>
+            </div>
+            <div class="qa-sec-tile">
+              <span class="lbl">Commits unsigned</span>
+              <span class="val" style="color:var(--warn);">bot 7d</span>
+              <span class="sub">lthcs-bot &middot; workflow-scoped, OK</span>
+            </div>
+          </div>
+
+          <h3 class="qa-sec-subhead">Recent commits to sensitive paths &middot; 7d</h3>
+          <div class="qa-sec-commits">
+            <div class="row">
+              <span class="sha mono">f8ced7a</span>
+              <span class="path">.github/wf/*</span>
+              <span class="msg">ci: pin all GitHub Actions to commit SHAs (P4 #25)</span>
+              <span class="when">05-20 09:05</span>
+            </div>
+            <div class="row">
+              <span class="sha mono">0a219fe</span>
+              <span class="path">.github/wf/*</span>
+              <span class="msg">ci: weekly trufflehog scan + CodeQL static analysis</span>
+              <span class="when">05-20 06:40</span>
+            </div>
+            <div class="row">
+              <span class="sha mono">3e8d026</span>
+              <span class="path">requirements.txt</span>
+              <span class="msg">sec: bump python-dotenv 1.2.1&rarr;1.2.2 + requests 2.32&rarr;2.33 (P0)</span>
+              <span class="when">05-20 06:52</span>
+            </div>
+            <div class="row">
+              <span class="sha mono">62312ae</span>
+              <span class="path">lthcs/llm/*</span>
+              <span class="msg">lthcs/llm: prompt-injection hardening (P1 #5)</span>
+              <span class="when">05-20 06:53</span>
+            </div>
+            <div class="row">
+              <span class="sha mono">fc27fc4</span>
+              <span class="path">app.py &middot; v2/</span>
+              <span class="msg">sec: add CSP + secondary security meta-headers (P2 #9)</span>
+              <span class="when">05-20 08:41</span>
+            </div>
+            <div class="row">
+              <span class="sha mono">0f9c126</span>
+              <span class="path">lthcs/score.py</span>
+              <span class="msg">map crypto_thesis_unavailable &rarr; thesis_integrity drop</span>
+              <span class="when">05-18 18:30</span>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================
+           ROW 3 — Universe state  +  Top movers
+           ============================================================ -->
+      <section class="qa-row qa-row-5-7">
+
+        <!-- UNIVERSE -->
+        <article class="qa-card">
+          <header class="qa-card-h">
+            <h2>Universe state <span class="sub">&mdash; 167 scored / 168 active / 169 declared</span></h2>
+            <span class="qa-pill warn"><span class="qa-dot warn"></span>1 ticker missing CIK</span>
+          </header>
+
+          <div class="qa-sector-grid">
+            <div class="qa-sec-cell"><span class="name">Technology</span><span class="n">42</span><span class="delta">25.1%</span></div>
+            <div class="qa-sec-cell"><span class="name">Health Care</span><span class="n">22</span><span class="delta">13.2%</span></div>
+            <div class="qa-sec-cell"><span class="name">Industrials</span><span class="n">21</span><span class="delta">12.6%</span></div>
+            <div class="qa-sec-cell"><span class="name">Cons. Disc.</span><span class="n">20</span><span class="delta">12.0%</span></div>
+            <div class="qa-sec-cell"><span class="name">Financials</span><span class="n">18</span><span class="delta">10.8%</span></div>
+            <div class="qa-sec-cell"><span class="name">Cons. Staples</span><span class="n">14</span><span class="delta">8.4%</span></div>
+            <div class="qa-sec-cell"><span class="name">Comm. Svcs.</span><span class="n">14</span><span class="delta">8.4%</span></div>
+            <div class="qa-sec-cell"><span class="name">Utilities</span><span class="n">7</span><span class="delta">4.2%</span></div>
+            <div class="qa-sec-cell"><span class="name">Energy</span><span class="n">5</span><span class="delta">3.0%</span></div>
+            <div class="qa-sec-cell"><span class="name">Real Estate</span><span class="n">2</span><span class="delta">1.2%</span></div>
+            <div class="qa-sec-cell"><span class="name">Materials</span><span class="n">2</span><span class="delta">1.2%</span></div>
+            <div class="qa-sec-cell" style="opacity:.55;">
+              <span class="name">Unclassified</span><span class="n">0</span><span class="delta">&mdash;</span>
+            </div>
+          </div>
+
+          <div class="qa-univ-diff">
+            <div class="panel">
+              <h4>Missing from snapshot (active in universe.json)</h4>
+              <ul>
+                <li><span class="tag">no-cik</span><span><b>ANSS</b> &middot; Technology &middot; sec_edgar lookup failed &times; 3</span></li>
+              </ul>
+            </div>
+            <div class="panel">
+              <h4>Marked inactive (deprecated)</h4>
+              <ul>
+                <li><span class="tag">retired</span><span><b>WBA</b> &middot; Cons. Staples &middot; removed 2026-05-18</span></li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="qa-univ-diff">
+            <div class="panel">
+              <h4>Data-quality flags &middot; today</h4>
+              <ul>
+                <li><span class="tag">sec_unav</span><span><b>3</b> &middot; CRWD &middot; GS &middot; ODFL <span style="color:var(--text-tertiary);">(IFRS fallback &rarr; fin = 50)</span></span></li>
+                <li><span class="tag">thesis</span><span><b>108</b> &middot; CI skip-thesis (AV quota, neutral 50)</span></li>
+                <li><span class="tag">conf=med</span><span><b>109</b> &middot; conf=high <b>58</b></span></li>
+              </ul>
+            </div>
+            <div class="panel">
+              <h4>Pre-warm cache &middot; last cron</h4>
+              <ul>
+                <li><span class="tag">yahoo</span><span>168 / 168 cached &middot; 0 failures</span></li>
+                <li><span class="tag">finnhub</span><span>168 / 168 cached &middot; 0 failures</span></li>
+                <li><span class="tag">sec_*</span><span>167 / 168 cached &middot; 1 failure (ANSS)</span></li>
+                <li><span class="tag">fred</span><span>11 / 11 &middot; eia 1 / 1 &middot; 13f 21 / 21</span></li>
+              </ul>
+            </div>
+          </div>
+        </article>
+
+        <!-- MOVERS -->
+        <article class="qa-card qa-movers">
+          <header class="qa-card-h">
+            <h2>Score audit <span class="sub">&mdash; top moves vs prior snapshot (05-18 &rarr; 05-20)</span></h2>
+            <span class="qa-pill warn"><span class="qa-dot warn"></span>20 band changes &middot; 0 churn alerts</span>
+          </header>
+
+          <div class="qa-table-wrap">
+            <table class="qa-table">
+              <thead>
+                <tr>
+                  <th>Ticker</th>
+                  <th>Sector</th>
+                  <th class="num">Score</th>
+                  <th class="num">&Delta;</th>
+                  <th>Band</th>
+                  <th>Why it moved (largest pillar &Delta;)</th>
+                  <th class="num">Conf.</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="tick">DASH</td>
+                  <td>Cons. Disc.</td>
+                  <td class="num from-to">27.8 &rarr; <b style="color:var(--text-primary)">38.4</b></td>
+                  <td class="num qa-delta-up">+10.6</td>
+                  <td><span class="qa-band-chip review">review</span></td>
+                  <td class="reason"><b>thesis_integrity</b> +19.8 (narratives_llm refresh &middot; stayed below review threshold)</td>
+                  <td class="num">med</td>
+                </tr>
+                <tr>
+                  <td class="tick">AZN</td>
+                  <td>Health Care</td>
+                  <td class="num from-to">51.2 &rarr; <b style="color:var(--text-primary)">61.1</b></td>
+                  <td class="num qa-delta-up">+9.9</td>
+                  <td><span class="qa-band-chip monitor">monitor</span> <span style="color:var(--text-tertiary);font-size:10.5px;">&larr; weak</span></td>
+                  <td class="reason"><b>financial_evolution</b> +23.6 (FY revisions; SEC 8-K filed 05-19)</td>
+                  <td class="num">high</td>
+                </tr>
+                <tr>
+                  <td class="tick">CDW</td>
+                  <td>Technology</td>
+                  <td class="num from-to">30.1 &rarr; <b style="color:var(--text-primary)">38.7</b></td>
+                  <td class="num qa-delta-up">+8.6</td>
+                  <td><span class="qa-band-chip review">review</span></td>
+                  <td class="reason"><b>thesis_integrity</b> +20.6 (narratives_llm + neutral 50 to live read)</td>
+                  <td class="num">med</td>
+                </tr>
+                <tr>
+                  <td class="tick">DHR</td>
+                  <td>Health Care</td>
+                  <td class="num from-to">32.0 &rarr; <b style="color:var(--text-primary)">40.0</b></td>
+                  <td class="num qa-delta-up">+8.0</td>
+                  <td><span class="qa-band-chip review">review</span></td>
+                  <td class="reason"><b>thesis_integrity</b> +22.7 (narratives_llm &middot; adoption -1.9 partial offset)</td>
+                  <td class="num">med</td>
+                </tr>
+                <tr>
+                  <td class="tick">WMT</td>
+                  <td>Cons. Staples</td>
+                  <td class="num from-to">53.1 &rarr; <b style="color:var(--text-primary)">46.9</b></td>
+                  <td class="num qa-delta-dn">&minus;6.2</td>
+                  <td><span class="qa-band-chip review">review</span> <span style="color:var(--text-tertiary);font-size:10.5px;">&larr; weak</span></td>
+                  <td class="reason"><b>adoption_momentum</b> -28.1 (search-trend collapse &middot; trends/2026-05-20 anomaly)</td>
+                  <td class="num">high</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p class="qa-note">
+            Band changes (20 total): 14 upgrades &middot; 6 downgrades. Hover any row in production for the
+            full pillar-delta breakdown. Churn rate 5.1% / day-pair &mdash; within hysteresis-free threshold.
+          </p>
+        </article>
+      </section>
+
+      <!-- ============================================================
+           FOOTER — provenance & jump-links
+           ============================================================ -->
+      <footer class="qa-foot">
+        <div>
+          Sources &middot;
+          <code>data/lthcs/snapshots/2026-05-20.json</code> &middot;
+          <code>data/lthcs/index/2026-05-20.json</code> &middot;
+          <code>data/lthcs/quality_audit/2026-05-20_*.md</code> &middot;
+          <code>data/lthcs/prewarm_status.json</code>
+        </div>
+        <div>
+          <strong>Read-only audit surface.</strong> All values are baked from a
+          point-in-time snapshot for design review &mdash; not live-bound yet.
+        </div>
+      </footer>
+
+    </div>
+  </body>
+</html>

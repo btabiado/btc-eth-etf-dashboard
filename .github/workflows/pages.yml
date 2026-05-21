@@ -355,6 +355,20 @@ jobs:
               cp -R data/lthcs _site/lthcs/data/
             fi
           fi
+          # Stage the LTHCS QA & Audit page under /lthcs/qa/. Source lives at
+          # lthcs_qa/ and reuses ../lthcs_tab/lthcs.css for design tokens.
+          # Currently displays baked-in audit data from a point-in-time
+          # snapshot (2026-05-20) for design review — no live data binding
+          # yet. Mirrors lthcs_tab/ one level above /lthcs/qa/ (idempotent
+          # with the health/backtest/crypto/position/public/help/diff/
+          # history/leaderboards branches above). V1-only — does NOT stage
+          # under /v2/. Promoted from lthcs_tab/mockups/qa-audit-desktop/.
+          if [ -f lthcs_qa/index.html ]; then
+            mkdir -p _site/lthcs/qa
+            cp -R lthcs_qa/* _site/lthcs/qa/
+            mkdir -p _site/lthcs/lthcs_tab
+            cp -R lthcs_tab/* _site/lthcs/lthcs_tab/ 2>/dev/null || true
+          fi
           # Include a tiny "about" so the page works even if dashboard.html breaks
           cat > _site/README.txt <<EOF
           BTC/ETH/LINK Trading Dashboard — static snapshot
