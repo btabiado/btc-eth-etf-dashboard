@@ -215,7 +215,7 @@ function renderIndexInto(host, payload) {
           <span>-100</span><span>0</span><span>+100</span>
         </div>
       </div>
-      <details class="lthcs-index-details" open>
+      <details class="lthcs-index-details">
         <summary class="lthcs-index-summary">Component breakdown</summary>
         ${componentsHtml}
       </details>

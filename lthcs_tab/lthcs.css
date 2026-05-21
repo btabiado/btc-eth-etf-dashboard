@@ -2051,11 +2051,28 @@ input[type="search"] {
    counts, band tiles, ticker grid). Class names are namespaced with
    `lthcs-ix-` to avoid colliding with the existing `lthcs-stat-` family.
    ========================================================================= */
+.lthcs-cockpit {
+  display: grid;
+  grid-template-columns: minmax(0, 1.85fr) minmax(280px, 0.8fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
 .lthcs-index-buttons {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr;
 }
+
+@media (max-width: 960px) {
+  .lthcs-cockpit {
+    grid-template-columns: 1fr;
+  }
+  .lthcs-index-buttons {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 @media (max-width: 760px) {
   .lthcs-index-buttons { grid-template-columns: 1fr; }
 }
@@ -2065,17 +2082,18 @@ input[type="search"] {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 14px 16px 12px;
+  padding: 13px 16px 12px;
   cursor: pointer;
-  text-align: center;
+  text-align: left;
   font-family: inherit;
   color: var(--text-primary);
   transition: background 140ms ease, border-color 140ms ease, transform 80ms ease;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px;
   overflow: hidden;
+  min-height: 0;
 }
 
 .lthcs-ix:hover {
@@ -2136,7 +2154,7 @@ input[type="search"] {
 }
 
 .lthcs-ix-count {
-  font-size: 32px;
+  font-size: 30px;
   font-weight: 800;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -2170,16 +2188,23 @@ input[type="search"] {
    above it, which renders the universe-level signed index gauge.
    ========================================================================= */
 .lthcs-apex {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
+  min-height: 258px;
+  background:
+    radial-gradient(circle at 88% 18%, rgba(110, 168, 254, 0.14), transparent 32%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.01) 44%),
+    var(--bg-elevated);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
-  padding: 22px 24px 18px;
+  padding: 30px 32px 24px;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: center;
   gap: 10px;
-  text-align: center;
+  text-align: left;
   position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
 }
 
 .lthcs-apex::before {
@@ -2199,23 +2224,28 @@ input[type="search"] {
   font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   font-weight: 700;
 }
 
 .lthcs-apex-headline {
   margin: 0;
-  font-size: 26px;
+  font-size: clamp(34px, 4.7vw, 58px);
   line-height: 1.1;
-  font-weight: 800;
-  letter-spacing: 0.5px;
+  font-weight: 900;
+  letter-spacing: 0;
   text-transform: uppercase;
   color: var(--lthcs-apex-tone, var(--band-monitor-bright));
   transition: color 200ms ease;
+  max-width: 11ch;
 }
 
 @media (max-width: 760px) {
-  .lthcs-apex-headline { font-size: 20px; }
+  .lthcs-apex {
+    min-height: 220px;
+    padding: 24px 22px 20px;
+  }
+  .lthcs-apex-headline { font-size: 32px; }
 }
 
 .lthcs-apex-score-line {
@@ -2242,7 +2272,7 @@ input[type="search"] {
 
 .lthcs-apex-gauge {
   width: 100%;
-  max-width: 720px;
+  max-width: none;
   position: relative;
   margin-top: 8px;
 }
@@ -3127,4 +3157,3 @@ input[type="search"] {
     right: 2px;
   }
 }
-
