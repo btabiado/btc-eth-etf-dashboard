@@ -1563,7 +1563,7 @@ footer{padding:18px 24px;color:var(--muted);font-size:12px;text-align:center;bor
       <button class="btn" id="loadBtcBtn" title="Paste BTC ETF flow CSV from Farside">Paste BTC</button>
       <button class="btn" id="loadEthBtn" title="Paste ETH ETF flow CSV from Farside">Paste ETH</button>
       <button class="btn" id="seedBtcBtn" title="Pull BTC from canadiancode/btc-etf-flows GitHub mirror (may be stale)">Seed BTC (mirror)</button>
-      <a class="btn" href="/bookmarklet" target="_blank" style="text-decoration:none" title="One-click bookmarklet for Farside pages">Get bookmarklet</a>
+      <a class="btn" href="/bookmarklet" target="_blank" rel="noopener noreferrer" style="text-decoration:none" title="One-click bookmarklet for Farside pages">Get bookmarklet</a>
       <span id="loadStatus" class="sub" style="margin-left:8px;color:var(--muted)"></span>
     </div>
     <!-- Per-tab asset toggle: BTC or ETH (no spot LINK/LTC ETFs exist).
