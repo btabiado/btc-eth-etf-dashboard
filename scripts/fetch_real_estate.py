@@ -64,15 +64,6 @@ FRED_PERMIT_URL = (
     "&observation_start=2021-01-01"
 )
 
-# Census Bureau national gazetteer for CBSAs — tab-delimited TXT inside a
-# ZIP. Single authoritative source for the full MSA name (e.g.
-# "Cape Coral-Fort Myers, FL") which embeds the principal-city aliases the
-# dashboard search needs. Pinning to 2024 — bump when a newer year ships.
-CENSUS_GAZETTEER_URL = (
-    "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/"
-    "2024_Gazetteer/2024_Gaz_cbsa_national.zip"
-)
-
 # Fallback Census long-form MSA names, keyed by Zillow's "City, ST" RegionName.
 # The primary source for these is the Census Bureau gazetteer fetched at
 # runtime by load_census_msa_names() — this dict is only used when that fetch
@@ -203,54 +194,46 @@ METRO_LONG_NAME_OVERRIDES: dict[str, str] = {
 }
 
 
-def load_census_msa_names(no_cache: bool) -> dict[str, str]:
-    """Return ``{"city, st" (lower) -> "Full MSA NAME"}`` from the Census
-    Bureau national gazetteer.
+def load_census_msa_names(no_cache: bool) -> list[dict[str, object]] | None:
+    """Return the indexed CBSA gazetteer (one entry per Census CBSA), or
+    None on fetch/parse failure — callers fall through to
+    METRO_LONG_NAME_OVERRIDES.
 
-    Source is the official CBSA gazetteer ZIP at CENSUS_GAZETTEER_URL; we keep
-    only Metropolitan Statistical Areas (LSAD == "M1"). The key is built from
-    the first principal city + first state of the Census NAME, which matches
-    Zillow's "City, ST" RegionName for the vast majority of MSAs.
+    Delegates fetch + parse + index to ``scripts/fetch_metro_coords.py``,
+    which already handles three Census-quirks we'd otherwise re-implement:
 
-    Returns ``{}`` on any failure — callers fall through to
-    METRO_LONG_NAME_OVERRIDES so the daily refresh still completes.
+      1. The 2024 schema appends ' Metro Area' / ' Micro Area' to NAME —
+         needs stripping or the resulting `name` field is ugly.
+      2. Zillow's "MSA" RegionType is a superset of Census Metros — many
+         Zillow metros are actually Micropolitan (CBSA_TYPE 2) and would
+         be dropped by a naive ``LSAD == 'M1'`` filter.
+      3. Three-tier matching for cases where Zillow's RegionName uses
+         the second hyphen-city (e.g. Zillow's "The Villages, FL" ->
+         CBSA "Wildwood-The Villages, FL") or has punctuation drift
+         (e.g. "Nashville-Davidson--Murfreesboro--Franklin, TN").
+
+    ``scripts/`` is auto-prepended to sys.path when either fetcher is run
+    directly, so the sibling import resolves without extra hooks.
     """
-    cache_path = CACHE_DIR / "census_cbsa_gazetteer.zip"
     try:
-        body, _ = http_get(CENSUS_GAZETTEER_URL, cache_path, no_cache)
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError) as e:
-        warn(f"census gazetteer fetch failed ({e}); using built-in overrides only")
-        return {}
-
+        import fetch_metro_coords as fmc
+    except ImportError as e:
+        warn(f"could not import fetch_metro_coords ({e}); using built-in overrides only")
+        return None
+    cache_path = CACHE_DIR / "census_cbsa_gazetteer.txt"
+    if no_cache and cache_path.exists():
+        try:
+            cache_path.unlink()
+        except OSError:
+            pass
     try:
-        with zipfile.ZipFile(io.BytesIO(body)) as zf:
-            txt_names = [n for n in zf.namelist() if n.lower().endswith(".txt")]
-            if not txt_names:
-                warn("census gazetteer zip has no .txt entry; using overrides")
-                return {}
-            text = zf.read(txt_names[0]).decode("utf-8", errors="replace")
-    except (zipfile.BadZipFile, KeyError) as e:
-        warn(f"census gazetteer unzip failed ({e}); using overrides")
-        return {}
-
-    out: dict[str, str] = {}
-    reader = csv.DictReader(io.StringIO(text), delimiter="\t")
-    for row in reader:
-        # Census gazetteer columns often have trailing whitespace.
-        clean = {(k or "").strip(): (v or "").strip() for k, v in row.items()}
-        # LSAD M1 = Metropolitan Statistical Area; M2 = Micropolitan (skip).
-        if clean.get("LSAD") != "M1":
-            continue
-        name = clean.get("NAME", "")
-        if not name or "," not in name:
-            continue
-        cities, _, states = name.rpartition(",")
-        first_city = cities.split("-", 1)[0].strip()
-        first_state = states.strip().split("-", 1)[0].strip()
-        if not first_city or not first_state:
-            continue
-        out[f"{first_city}, {first_state}".lower()] = name
-    return out
+        body = fmc.fetch_gazetteer_txt(cache_path)
+        rows = fmc.parse_gazetteer(body)
+        return fmc.index_gazetteer(rows)
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError,
+            OSError, zipfile.BadZipFile, RuntimeError) as e:
+        warn(f"census gazetteer fetch/parse failed ({e}); using built-in overrides only")
+        return None
 
 
 # Populated by load_metros_from_zillow() at startup. Each entry is a dict:
@@ -263,7 +246,7 @@ METROS: list[dict[str, object]] = []
 def load_metros_from_zillow(
     max_metros: int | None,
     no_cache: bool,
-    census_names: dict[str, str] | None = None,
+    census_index: list[dict[str, object]] | None = None,
 ) -> list[dict[str, object]]:
     """Read Zillow ZHVI CSV, return the metro list ordered by SizeRank.
 
@@ -273,7 +256,7 @@ def load_metros_from_zillow(
     by SizeRank. Excludes Puerto Rico to keep focus on US + AK/HI markets.
 
     Name resolution priority for `full`:
-        1. Census Bureau gazetteer (covers all ~390 US MSAs).
+        1. Census Bureau gazetteer via fetch_metro_coords.match_metro().
         2. Hardcoded METRO_LONG_NAME_OVERRIDES (safety net).
         3. Zillow's short-form RegionName.
     """
@@ -300,7 +283,16 @@ def load_metros_from_zillow(
     if max_metros and max_metros > 0:
         rows = rows[:max_metros]
 
-    census_names = census_names or {}
+    # Only import fetch_metro_coords if we actually have a Census index to
+    # look up against — keeps the module decoupled when running in fallback.
+    match_fn = None
+    if census_index:
+        try:
+            import fetch_metro_coords as fmc
+            match_fn = fmc.match_metro
+        except ImportError:
+            pass
+
     out: list[dict[str, object]] = []
     for i, row in enumerate(rows, start=1):
         region_name = (row.get("RegionName") or "").strip()
@@ -312,11 +304,13 @@ def load_metros_from_zillow(
         else:
             short = region_name
             state = ""
-        full = (
-            census_names.get(f"{short}, {state}".lower())
-            or METRO_LONG_NAME_OVERRIDES.get(region_name)
-            or region_name
-        )
+        full = region_name
+        if match_fn is not None and census_index:
+            hit = match_fn(short, state, census_index)
+            if hit:
+                full = str(hit["name"])
+        if full == region_name:
+            full = METRO_LONG_NAME_OVERRIDES.get(region_name, region_name)
         out.append({
             "rank": i,
             "full": full,
@@ -902,14 +896,14 @@ def main() -> int:
     # Pull the Census Bureau gazetteer first — gives us the full hyphenated
     # MSA name (e.g. "Cape Coral-Fort Myers, FL") for every US MSA, which is
     # what the dashboard search greps over to find principal-city aliases.
-    census_names = load_census_msa_names(args.no_cache)
-    if census_names:
-        info(f"census gazetteer: {len(census_names)} MSA names")
+    census_index = load_census_msa_names(args.no_cache)
+    if census_index:
+        info(f"census gazetteer: {len(census_index)} CBSAs indexed")
 
     # Bootstrap the metro list off Zillow's SizeRank column. Mutates the
     # module-level METROS so downstream loaders pick up the same set.
     global METROS
-    METROS = load_metros_from_zillow(args.max_metros or None, args.no_cache, census_names)
+    METROS = load_metros_from_zillow(args.max_metros or None, args.no_cache, census_index)
     info(f"metros: loaded {len(METROS)} from Zillow"
          + (f" (capped to top {args.max_metros})" if args.max_metros else " (all US MSAs)"))
 
