@@ -28,6 +28,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+import zipfile
 from datetime import datetime, timezone
 from email.utils import formatdate, parsedate_to_datetime
 from pathlib import Path
@@ -63,11 +64,21 @@ FRED_PERMIT_URL = (
     "&observation_start=2021-01-01"
 )
 
-# Canonical Census long-form names keyed by Zillow's "City, ST" RegionName.
-# Used as the `name` field in output when a match exists; metros without
-# overrides fall back to Zillow's short-form RegionName (e.g. "Rochester, NY").
-# Keyed by RegionName rather than rank so the override is stable across
-# Zillow SizeRank reorderings.
+# Census Bureau national gazetteer for CBSAs — tab-delimited TXT inside a
+# ZIP. Single authoritative source for the full MSA name (e.g.
+# "Cape Coral-Fort Myers, FL") which embeds the principal-city aliases the
+# dashboard search needs. Pinning to 2024 — bump when a newer year ships.
+CENSUS_GAZETTEER_URL = (
+    "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/"
+    "2024_Gazetteer/2024_Gaz_cbsa_national.zip"
+)
+
+# Fallback Census long-form MSA names, keyed by Zillow's "City, ST" RegionName.
+# The primary source for these is the Census Bureau gazetteer fetched at
+# runtime by load_census_msa_names() — this dict is only used when that fetch
+# is unavailable (e.g. in restricted CI environments). Kept comprehensive
+# enough that common principal-city searches ("Fort Myers", "Sarasota",
+# "Daytona Beach", "Springdale", etc.) still resolve in fallback mode.
 METRO_LONG_NAME_OVERRIDES: dict[str, str] = {
     "New York, NY":        "New York-Newark-Jersey City, NY-NJ-PA",
     "Los Angeles, CA":     "Los Angeles-Long Beach-Anaheim, CA",
@@ -119,7 +130,127 @@ METRO_LONG_NAME_OVERRIDES: dict[str, str] = {
     "Hartford, CT":        "Hartford-East Hartford-Middletown, CT",
     "Buffalo, NY":         "Buffalo-Cheektowaga, NY",
     "Birmingham, AL":      "Birmingham-Hoover, AL",
+    # Florida — commonly searched principal-city aliases not in the short name.
+    "Cape Coral, FL":      "Cape Coral-Fort Myers, FL",
+    "North Port, FL":      "North Port-Sarasota-Bradenton, FL",
+    "Deltona, FL":         "Deltona-Daytona Beach-Ormond Beach, FL",
+    "Palm Bay, FL":        "Palm Bay-Melbourne-Titusville, FL",
+    "Lakeland, FL":        "Lakeland-Winter Haven, FL",
+    "Naples, FL":          "Naples-Marco Island, FL",
+    "Crestview, FL":       "Crestview-Fort Walton Beach-Destin, FL",
+    "Sebastian, FL":       "Sebastian-Vero Beach, FL",
+    "Homosassa Springs, FL": "Homosassa Springs, FL",
+    "Port St. Lucie, FL":  "Port St. Lucie, FL",
+    "Pensacola, FL":       "Pensacola-Ferry Pass-Brent, FL",
+    # Northeast / Mid-Atlantic
+    "Bridgeport, CT":      "Bridgeport-Stamford-Norwalk, CT",
+    "New Haven, CT":       "New Haven-Milford, CT",
+    "Allentown, PA":       "Allentown-Bethlehem-Easton, PA-NJ",
+    "Harrisburg, PA":      "Harrisburg-Carlisle, PA",
+    "Scranton, PA":        "Scranton--Wilkes-Barre, PA",
+    "York, PA":            "York-Hanover, PA",
+    # Carolinas
+    "Greensboro, NC":      "Greensboro-High Point, NC",
+    "Durham, NC":          "Durham-Chapel Hill, NC",
+    "Hickory, NC":         "Hickory-Lenoir-Morganton, NC",
+    "Greenville, SC":      "Greenville-Anderson, SC",
+    # Deep South
+    "Daphne, AL":          "Daphne-Fairhope-Foley, AL",
+    "Gulfport, MS":        "Gulfport-Biloxi, MS",
+    "Augusta, GA":         "Augusta-Richmond County, GA-SC",
+    "Athens, GA":          "Athens-Clarke County, GA",
+    # Texas
+    "Beaumont, TX":        "Beaumont-Port Arthur, TX",
+    "McAllen, TX":         "McAllen-Edinburg-Mission, TX",
+    "Brownsville, TX":     "Brownsville-Harlingen, TX",
+    "Killeen, TX":         "Killeen-Temple, TX",
+    "Bryan, TX":           "Bryan-College Station, TX",
+    "Sherman, TX":         "Sherman-Denison, TX",
+    # Louisiana / Arkansas
+    "Shreveport, LA":      "Shreveport-Bossier City, LA",
+    "Houma, LA":           "Houma-Thibodaux, LA",
+    "Fayetteville, AR":    "Fayetteville-Springdale-Rogers, AR",
+    "Little Rock, AR":     "Little Rock-North Little Rock-Conway, AR",
+    "Fort Smith, AR":      "Fort Smith, AR-OK",
+    # Midwest
+    "Davenport, IA":       "Davenport-Moline-Rock Island, IA-IL",
+    "Des Moines, IA":      "Des Moines-West Des Moines, IA",
+    "Sioux City, IA":      "Sioux City, IA-NE-SD",
+    "Waterloo, IA":        "Waterloo-Cedar Falls, IA",
+    "Omaha, NE":           "Omaha-Council Bluffs, NE-IA",
+    "Lexington, KY":       "Lexington-Fayette, KY",
+    # Mountain / Southwest
+    "Provo, UT":           "Provo-Orem, UT",
+    "Ogden, UT":           "Ogden-Clearfield, UT",
+    "Prescott Valley, AZ": "Prescott Valley-Prescott, AZ",
+    "Lake Havasu City, AZ": "Lake Havasu City-Kingman, AZ",
+    # California
+    "Santa Maria, CA":     "Santa Maria-Santa Barbara, CA",
+    "San Luis Obispo, CA": "San Luis Obispo-Paso Robles, CA",
+    "Santa Cruz, CA":      "Santa Cruz-Watsonville, CA",
+    "Santa Rosa, CA":      "Santa Rosa-Petaluma, CA",
+    "Hanford, CA":         "Hanford-Corcoran, CA",
+    "Eureka, CA":          "Eureka-Arcata, CA",
+    # Pacific NW
+    "Eugene, OR":          "Eugene-Springfield, OR",
+    "Olympia, WA":         "Olympia-Lacey-Tumwater, WA",
+    "Spokane, WA":         "Spokane-Spokane Valley, WA",
+    "Kennewick, WA":       "Kennewick-Richland, WA",
+    "Mount Vernon, WA":    "Mount Vernon-Anacortes, WA",
+    "Bremerton, WA":       "Bremerton-Silverdale-Port Orchard, WA",
+    # Hawaii
+    "Kahului, HI":         "Kahului-Wailuku-Lahaina, HI",
 }
+
+
+def load_census_msa_names(no_cache: bool) -> dict[str, str]:
+    """Return ``{"city, st" (lower) -> "Full MSA NAME"}`` from the Census
+    Bureau national gazetteer.
+
+    Source is the official CBSA gazetteer ZIP at CENSUS_GAZETTEER_URL; we keep
+    only Metropolitan Statistical Areas (LSAD == "M1"). The key is built from
+    the first principal city + first state of the Census NAME, which matches
+    Zillow's "City, ST" RegionName for the vast majority of MSAs.
+
+    Returns ``{}`` on any failure — callers fall through to
+    METRO_LONG_NAME_OVERRIDES so the daily refresh still completes.
+    """
+    cache_path = CACHE_DIR / "census_cbsa_gazetteer.zip"
+    try:
+        body, _ = http_get(CENSUS_GAZETTEER_URL, cache_path, no_cache)
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError) as e:
+        warn(f"census gazetteer fetch failed ({e}); using built-in overrides only")
+        return {}
+
+    try:
+        with zipfile.ZipFile(io.BytesIO(body)) as zf:
+            txt_names = [n for n in zf.namelist() if n.lower().endswith(".txt")]
+            if not txt_names:
+                warn("census gazetteer zip has no .txt entry; using overrides")
+                return {}
+            text = zf.read(txt_names[0]).decode("utf-8", errors="replace")
+    except (zipfile.BadZipFile, KeyError) as e:
+        warn(f"census gazetteer unzip failed ({e}); using overrides")
+        return {}
+
+    out: dict[str, str] = {}
+    reader = csv.DictReader(io.StringIO(text), delimiter="\t")
+    for row in reader:
+        # Census gazetteer columns often have trailing whitespace.
+        clean = {(k or "").strip(): (v or "").strip() for k, v in row.items()}
+        # LSAD M1 = Metropolitan Statistical Area; M2 = Micropolitan (skip).
+        if clean.get("LSAD") != "M1":
+            continue
+        name = clean.get("NAME", "")
+        if not name or "," not in name:
+            continue
+        cities, _, states = name.rpartition(",")
+        first_city = cities.split("-", 1)[0].strip()
+        first_state = states.strip().split("-", 1)[0].strip()
+        if not first_city or not first_state:
+            continue
+        out[f"{first_city}, {first_state}".lower()] = name
+    return out
 
 
 # Populated by load_metros_from_zillow() at startup. Each entry is a dict:
@@ -129,13 +260,22 @@ METRO_LONG_NAME_OVERRIDES: dict[str, str] = {
 METROS: list[dict[str, object]] = []
 
 
-def load_metros_from_zillow(max_metros: int | None, no_cache: bool) -> list[dict[str, object]]:
+def load_metros_from_zillow(
+    max_metros: int | None,
+    no_cache: bool,
+    census_names: dict[str, str] | None = None,
+) -> list[dict[str, object]]:
     """Read Zillow ZHVI CSV, return the metro list ordered by SizeRank.
 
-    Returns one dict per US MSA with rank, full (Zillow RegionName),
-    short (city portion), state (2-letter code). If max_metros is set,
-    truncates after the top N by SizeRank. Excludes Puerto Rico (StateName
-    == "Puerto Rico") to keep the focus on US continental + AK/HI markets.
+    Returns one dict per US MSA with rank, full (canonical Census MSA name
+    when resolvable, otherwise Zillow's RegionName), short (city portion),
+    state (2-letter code). If max_metros is set, truncates after the top N
+    by SizeRank. Excludes Puerto Rico to keep focus on US + AK/HI markets.
+
+    Name resolution priority for `full`:
+        1. Census Bureau gazetteer (covers all ~390 US MSAs).
+        2. Hardcoded METRO_LONG_NAME_OVERRIDES (safety net).
+        3. Zillow's short-form RegionName.
     """
     cache_path = CACHE_DIR / "zillow_zhvi.csv"
     body, _ = http_get(ZILLOW_BASE + ZILLOW_URLS["zhvi"], cache_path, no_cache)
@@ -160,6 +300,7 @@ def load_metros_from_zillow(max_metros: int | None, no_cache: bool) -> list[dict
     if max_metros and max_metros > 0:
         rows = rows[:max_metros]
 
+    census_names = census_names or {}
     out: list[dict[str, object]] = []
     for i, row in enumerate(rows, start=1):
         region_name = (row.get("RegionName") or "").strip()
@@ -171,9 +312,14 @@ def load_metros_from_zillow(max_metros: int | None, no_cache: bool) -> list[dict
         else:
             short = region_name
             state = ""
+        full = (
+            census_names.get(f"{short}, {state}".lower())
+            or METRO_LONG_NAME_OVERRIDES.get(region_name)
+            or region_name
+        )
         out.append({
             "rank": i,
-            "full": region_name,
+            "full": full,
             "short": short,
             "state": state,
         })
@@ -565,10 +711,9 @@ def build_metro(metro_def: dict[str, object], zillow: dict, redfin: dict) -> dic
     rank = int(metro_def["rank"])
     short = str(metro_def["short"])
     state = str(metro_def["state"])
-    # Use the canonical Census long name when we have an override (keyed by
-    # Zillow's "City, ST" RegionName); fall back to Zillow's short-form
-    # RegionName ("Rochester, NY") otherwise.
-    full_name = METRO_LONG_NAME_OVERRIDES.get(str(metro_def["full"]), str(metro_def["full"]))
+    # `full` is the canonical Census MSA name pre-resolved by
+    # load_metros_from_zillow() (Census gazetteer -> overrides -> Zillow).
+    full_name = str(metro_def["full"])
 
     def z_get(metric: str) -> tuple[dict[str, str] | None, list[str]]:
         m = zillow.get(metric)
@@ -754,10 +899,17 @@ def main() -> int:
     started = time.time()
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
+    # Pull the Census Bureau gazetteer first — gives us the full hyphenated
+    # MSA name (e.g. "Cape Coral-Fort Myers, FL") for every US MSA, which is
+    # what the dashboard search greps over to find principal-city aliases.
+    census_names = load_census_msa_names(args.no_cache)
+    if census_names:
+        info(f"census gazetteer: {len(census_names)} MSA names")
+
     # Bootstrap the metro list off Zillow's SizeRank column. Mutates the
     # module-level METROS so downstream loaders pick up the same set.
     global METROS
-    METROS = load_metros_from_zillow(args.max_metros or None, args.no_cache)
+    METROS = load_metros_from_zillow(args.max_metros or None, args.no_cache, census_names)
     info(f"metros: loaded {len(METROS)} from Zillow"
          + (f" (capped to top {args.max_metros})" if args.max_metros else " (all US MSAs)"))
 
@@ -779,7 +931,7 @@ def main() -> int:
             warn(f"build_metro rank={rank} failed: {e}")
             metros.append({
                 "rank": rank,
-                "name": METRO_LONG_NAME_OVERRIDES.get(str(m["full"]), str(m["full"])),
+                "name": str(m["full"]),
                 "short_name": str(m["short"]),
                 "state": str(m["state"]),
                 "zillow_region_id": None,
