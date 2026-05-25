@@ -1410,6 +1410,30 @@ def _market_insights(payload: dict) -> list[dict]:
                     "detail": f"{div*100:.2f}% spread between data sources — Coinbase often leads US-hours moves.",
                 })
 
+    # Coinbase taker buy/sell pressure (DATA.market.coinbase[asset].buy_ratio,
+    # computed in fetch_market._coinbase_buy_ratio from recent executed trades).
+    # buy_ratio is taker-buy volume / total taker volume in [0,1]; a strong
+    # skew on a US-regulated spot venue is a near-real-time demand signal.
+    for asset in ("btc", "eth", "link", "ltc"):
+        cba = cb.get(asset) or {}
+        br = cba.get("buy_ratio")
+        n = cba.get("trades_sampled") or 0
+        if br is None or n < 50:
+            continue
+        pct = br * 100.0
+        if br >= 0.60:
+            out.append({
+                "kind": "trend", "asset": asset, "severity": "good",
+                "headline": f"{asset.upper()} Coinbase buy pressure {pct:.0f}% — taker demand skewed bullish",
+                "detail": f"{pct:.0f}% of last {n:,} taker trades hit the ask on a US-regulated venue.",
+            })
+        elif br <= 0.40:
+            out.append({
+                "kind": "trend", "asset": asset, "severity": "alert",
+                "headline": f"{asset.upper()} Coinbase sell pressure {100 - pct:.0f}% — taker flow skewed bearish",
+                "detail": f"{100 - pct:.0f}% of last {n:,} taker trades hit the bid on a US-regulated venue.",
+            })
+
     # ----- Markets tab: top-25 movers + BTC dominance + total market cap -----
     # These fire more frequently than the FRED macro rules so the Markets
     # insights bar isn't empty on calm macro days.

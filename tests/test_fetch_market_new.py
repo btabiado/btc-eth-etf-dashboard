@@ -131,6 +131,52 @@ def test_mempool_whale_coinbase_excluded():
 
 
 # ============================================================================
+# _coinbase_buy_ratio
+# ============================================================================
+#
+# Coinbase Exchange /trades tags each trade with the *maker* side. The taker
+# (aggressor) is the opposite: side "sell" == taker bought (buy pressure),
+# side "buy" == taker sold (sell pressure). These tests pin that inversion
+# plus the size/side sanitisation.
+
+
+def test_coinbase_buy_ratio_taker_side_inversion():
+    """side 'sell' counts as taker BUY volume; 'buy' as taker SELL volume."""
+    trades = [
+        {"size": "2", "side": "sell"},   # taker buy 2
+        {"size": "1", "side": "sell"},   # taker buy 1
+        {"size": "1", "side": "buy"},    # taker sell 1
+    ]
+    with patch.object(fetch_market, "_get", return_value=trades):
+        r = fetch_market._coinbase_buy_ratio("BTC-USD")
+    assert r is not None
+    assert r["taker_buy_vol"] == 3.0
+    assert r["taker_sell_vol"] == 1.0
+    assert abs(r["buy_ratio"] - 0.75) < 1e-9
+    assert r["trades_sampled"] == 3
+
+
+def test_coinbase_buy_ratio_skips_bad_rows_and_empty():
+    """Zero/non-numeric sizes and unknown sides are ignored; empty -> None."""
+    trades = [
+        {"size": "0", "side": "sell"},     # zero size -> skip
+        {"size": "x", "side": "buy"},      # non-numeric -> skip
+        {"size": "4", "side": None},       # unknown side -> skip
+        {"size": "4", "side": "sell"},     # the only counted trade
+    ]
+    with patch.object(fetch_market, "_get", return_value=trades):
+        r = fetch_market._coinbase_buy_ratio("BTC-USD")
+    assert r is not None
+    assert r["trades_sampled"] == 1
+    assert r["buy_ratio"] == 1.0
+
+    with patch.object(fetch_market, "_get", return_value=[]):
+        assert fetch_market._coinbase_buy_ratio("BTC-USD") is None
+    with patch.object(fetch_market, "_get", return_value=None):
+        assert fetch_market._coinbase_buy_ratio("BTC-USD") is None
+
+
+# ============================================================================
 # poc_migration_series
 # ============================================================================
 

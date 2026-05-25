@@ -131,6 +131,52 @@ def coinbase_intl_perpetuals() -> list[dict]:
     return out
 
 
+def _coinbase_buy_ratio(product: str, limit: int = 1000) -> dict | None:
+    """Taker buy/sell pressure from Coinbase Exchange recent trades.
+
+    GET /products/{id}/trades returns the latest `limit` trades, each tagged
+    with `side` = the *maker* order side. The taker (aggressor) is the opposite
+    side: side "sell" means the resting maker was selling and the taker lifted
+    the offer (an aggressive BUY / up-tick); side "buy" means the taker hit the
+    bid (aggressive SELL). So taker-buy volume = Σ size where side == "sell".
+
+    Returns {buy_ratio, taker_buy_vol, taker_sell_vol, trades_sampled} where
+    buy_ratio = taker_buy_vol / (taker_buy_vol + taker_sell_vol) in [0,1], or
+    None if no usable trades came back.
+    """
+    trades = _get(f"https://api.exchange.coinbase.com/products/{product}/trades",
+                  {"limit": str(limit)})
+    if not trades or not isinstance(trades, list):
+        return None
+    buy_vol = 0.0
+    sell_vol = 0.0
+    n = 0
+    for t in trades:
+        try:
+            size = float(t.get("size") or 0)
+        except (ValueError, TypeError):
+            continue
+        if size <= 0:
+            continue
+        side = t.get("side")
+        if side == "sell":      # maker sold -> taker bought (buy pressure)
+            buy_vol += size
+        elif side == "buy":     # maker bought -> taker sold (sell pressure)
+            sell_vol += size
+        else:
+            continue
+        n += 1
+    total = buy_vol + sell_vol
+    if n == 0 or total <= 0:
+        return None
+    return {
+        "buy_ratio":      buy_vol / total,
+        "taker_buy_vol":  buy_vol,
+        "taker_sell_vol": sell_vol,
+        "trades_sampled": n,
+    }
+
+
 def _coinbase_spot_impl() -> dict:
     """Coinbase Exchange spot ticker + 24h stats for BTC/ETH/LINK/LTC.
 
@@ -175,6 +221,9 @@ def _coinbase_spot_impl() -> dict:
                 # Coinbase 24h change %: (last - open) / open
                 if entry["open_24h"] > 0:
                     entry["change_24h_pct"] = (entry["price_usd"] / entry["open_24h"] - 1) * 100
+            br = _coinbase_buy_ratio(product)
+            if br is not None:
+                entry.update(br)
             out[sym] = entry
         except (ValueError, TypeError) as e:
             print(f"  [coinbase] {product}: parse {e}", file=sys.stderr)
