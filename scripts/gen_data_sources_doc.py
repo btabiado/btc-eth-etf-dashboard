@@ -170,7 +170,8 @@ doc.add_heading("Cross-cutting sources", level=1)
 doc.add_paragraph("Used across multiple tabs rather than tied to one.").runs[0].italic = True
 add_source_table(doc, CROSS)
 
-out = "/home/user/btc-eth-etf-dashboard/Dashboard_Data_Sources.docx"
+import os
+out = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "v2", "Dashboard_Data_Sources.docx")
 doc.save(out)
 print("Saved", out)
 print("Tabs:", len(TABS), "Unique providers:", len(unique), "Total refs:", total_refs)

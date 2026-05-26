@@ -1454,6 +1454,7 @@ footer{padding:18px 24px;color:var(--muted);font-size:12px;text-align:center;bor
   <div class="tab" data-tab="supplies" role="tab" tabindex="0" aria-selected="false">Supplies</div>
   <div class="tab" data-tab="metals" role="tab" tabindex="0" aria-selected="false">Metals</div>
   <div class="tab" data-tab="mufon" role="tab" tabindex="0" aria-selected="false">UAP</div>
+  <div class="tab" data-tab="datasources" role="tab" tabindex="0" aria-selected="false">Data Sources</div>
 </div>
 
 <!-- Global Period + Timeframe header bar removed: it was clutter on tabs
@@ -3421,6 +3422,29 @@ footer{padding:18px 24px;color:var(--muted);font-size:12px;text-align:center;bor
         <div><span class="v2-chip v2-chip--info" id="mufonShapesAsOf">● —</span></div>
       </div>
       <div class="v2-card__body" id="mufonShapesBody" style="padding:14px"></div>
+    </div>
+  </div>
+
+  <div id="tab-datasources" class="hidden">
+    <div class="v2-card" style="margin-bottom:14px">
+      <div class="v2-card__head">
+        <div>
+          <h2 class="v2-card__title">Data sources</h2>
+          <div class="v2-card__subtitle">Every external provider this dashboard pulls from, organized by tab</div>
+        </div>
+        <div><span class="v2-chip v2-chip--info">● reference</span></div>
+      </div>
+      <div class="v2-card__body" style="padding:18px">
+        <p style="margin:0 0 16px;color:var(--muted);line-height:1.5">
+          The full inventory is maintained as a Word document — 15 tabs, 58 unique
+          providers, with a Provider / Endpoint / Feeds table for each tab plus the
+          cross-cutting sources (FRED macro overlays, Anthropic chat).
+        </p>
+        <a href="Dashboard_Data_Sources.docx" download
+           style="display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:8px;background:var(--v2-info);color:#fff;text-decoration:none;font-weight:700;font-size:14px">
+          ⬇ Download data sources (.docx)
+        </a>
+      </div>
     </div>
   </div>
 </div>
@@ -13720,6 +13744,7 @@ function selectTab(t){
   document.getElementById('tab-supplies').classList.toggle('hidden', t!=='supplies');
   document.getElementById('tab-metals').classList.toggle('hidden', t!=='metals');
   document.getElementById('tab-mufon').classList.toggle('hidden', t!=='mufon');
+  document.getElementById('tab-datasources').classList.toggle('hidden', t!=='datasources');
   // Period selector now ETF-only. Trading and Whale tabs had it but it was
   // confusing (overlap with Timeframe / Range buttons); their charts are
   // daily by default. ETF Flows still needs Period for the daily/weekly/
