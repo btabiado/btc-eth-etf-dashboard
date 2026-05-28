@@ -57,6 +57,12 @@ UA = "Mozilla/5.0 (compatible; etf-flow-dashboard/1.0)"
 H = {"User-Agent": UA}
 ROOT = Path(__file__).parent
 DEFAULT_OUT = ROOT / "v2" / "data-travel.json"
+# V1 dual-write target — the V1 dashboard lazy-loads /data-travel.json via the
+# same SIDECARS mechanism it already uses for whale/defi/cpi/supplies/metals.
+# Writing here keeps V2's existing wiring untouched while giving V1 a
+# self-contained sidecar that the CI stage step picks up automatically (it
+# globs `data-*.json` at repo root). Pass --out-v1 '' to disable.
+DEFAULT_OUT_V1 = ROOT / "data-travel.json"
 
 ADVISORY_LIST_URL = "https://travel.state.gov/en/international-travel/travel-advisories.html"
 # Canonical State Dept RSS feed for security alerts + advisory-level changes.
@@ -681,6 +687,9 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Fetch U.S. State Dept travel advisories.")
     ap.add_argument("--out", default=str(DEFAULT_OUT),
                     help=f"Output JSON path (default: {DEFAULT_OUT})")
+    ap.add_argument("--out-v1", default=str(DEFAULT_OUT_V1),
+                    help=f"V1 dashboard dual-write path (default: {DEFAULT_OUT_V1}; "
+                         f"pass empty string '' to disable)")
     ap.add_argument("--no-network", action="store_true",
                     help="Run offline parser self-test and exit (no HTTP).")
     args = ap.parse_args(argv)
@@ -689,6 +698,25 @@ def main(argv: list[str] | None = None) -> int:
         return _self_test()
 
     out_path = Path(args.out)
+    # Build the optional V1 dual-write target (empty arg disables it).
+    v1_out_path: Path | None = None
+    if (args.out_v1 or "").strip():
+        v1_out_path = Path(args.out_v1)
+
+    def _write_v1(payload_dict: dict) -> None:
+        """Mirror the V2 payload to data-travel.json at repo root so the V1
+        dashboard's lazy-load can pick it up. Failure here is non-fatal —
+        V1 just shows its empty state until the next run."""
+        if v1_out_path is None:
+            return
+        try:
+            v1_out_path.parent.mkdir(parents=True, exist_ok=True)
+            v1_out_path.write_text(json.dumps(payload_dict, indent=2))
+            print(f"  [advisories] mirrored payload to {v1_out_path}")
+        except Exception as e:
+            print(f"  [advisories] v1 dual-write failed ({v1_out_path}): {e}",
+                  file=sys.stderr)
+
     payload = fetch_live()
     if payload is None:
         # Fallback-to-last-good: preserve the existing file (if any), log
@@ -703,6 +731,7 @@ def main(argv: list[str] | None = None) -> int:
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(payload, indent=2))
+    _write_v1(payload)
     print(f"  Wrote {out_path} ({len(payload['advisories'])} advisories, "
           f"{len(payload['bulletins'])} bulletins)")
     return 0
