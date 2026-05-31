@@ -14947,7 +14947,11 @@ function renderCityCards(cities){
     } else {
       const rent = cityFmtMoney(ctx.median_rent);
       const tax  = cityFmtRate(ctx.effective_property_tax_rate);
-      ctxStrip = '<div style="font-size:11px;color:var(--muted);margin-top:8px">Median rent ' + escapeHtml(rent) + ' · Eff. property tax ' + escapeHtml(tax) + '</div>';
+      // Unemployment (BLS LAUS) is the one Context field populated without API
+      // keys, so surface it FIRST — otherwise the strip is all em-dashes until
+      // the Census/AirNow keys land.
+      const unemp = (typeof ctx.unemployment_rate === 'number') ? ctx.unemployment_rate.toFixed(1) + '%' : '—';
+      ctxStrip = '<div style="font-size:11px;color:var(--muted);margin-top:8px">Unemployment ' + escapeHtml(unemp) + ' · Median rent ' + escapeHtml(rent) + ' · Eff. property tax ' + escapeHtml(tax) + '</div>';
     }
     return ''
       + '<div class="chart-card city-card" role="button" tabindex="0" data-cityid="' + escapeHtml(c.id) + '" '
