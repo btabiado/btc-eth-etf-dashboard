@@ -45,7 +45,7 @@ METHODOLOGY_DISCLOSURES = [
     "Data-continuity breaks can cause artificial jumps: Seattle PD's 2019 "
     "records-system change, LA's yearly dataset rotation, and SF's 2018 portal "
     "migration are known breakpoints.",
-    "Reporting lag: some feeds exclude the most recent days (Chicago crime "
+    "Reporting lag: some feeds exclude the most recent days (Chicago crime " +
     "excludes ~7 days), so 'Recent' is aligned to the last complete month.",
     "Coverage honesty: when a city does not publish a pillar's feed, Pulse is " +
     "computed on what is present and labeled 'N of 3 pillars' — missing data is "
