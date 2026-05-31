@@ -1,5 +1,6 @@
 # Python
 .venv/
+.venv-city/
 venv/
 __pycache__/
 *.py[cod]
