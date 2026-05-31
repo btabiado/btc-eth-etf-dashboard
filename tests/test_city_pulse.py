@@ -575,9 +575,12 @@ def test_insufficient_history_feed_conforms_to_schema():
     city = pulse.score_city(id="sf", name="San Francisco", scope="city",
                             pillar_objs=[pillar], disclosures=[])
     payload = pulse.score_payload([city], as_of=AS_OF, methodology_disclosures=[])
+    jsonschema = None
     try:
         import jsonschema
     except ImportError:
+        pass
+    if jsonschema is None:
         pytest.skip("jsonschema not installed")
     jsonschema.validate(instance=payload, schema=schema_loaded())
 
