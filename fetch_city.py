@@ -47,7 +47,7 @@ METHODOLOGY_DISCLOSURES = [
     "migration are known breakpoints.",
     "Reporting lag: some feeds exclude the most recent days (Chicago crime "
     "excludes ~7 days), so 'Recent' is aligned to the last complete month.",
-    "Coverage honesty: when a city does not publish a pillar's feed, Pulse is "
+    "Coverage honesty: when a city does not publish a pillar's feed, Pulse is " +
     "computed on what is present and labeled 'N of 3 pillars' — missing data is "
     "never treated as zero.",
 ]
