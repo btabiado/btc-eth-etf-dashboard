@@ -856,6 +856,13 @@ def main() -> int:
     # the JS lazy-loader treats a missing file as an empty state. City is V1-only.
     manifest["city"] = "data-city.json"
 
+    # Aviation tab sidecar (data-aviation.json at repo root): static FAA airman/
+    # registry + global-fleet + used-market payload, committed via a .gitignore
+    # carve-out. The Live Traffic sub-view separately fetches data-opensky.json
+    # (refreshed hourly by aviation-opensky.yml) at runtime, with a baked-in seed
+    # fallback in DATA.aviation.live.seed. JS lazy-loader treats missing as empty.
+    manifest["aviation"] = "data-aviation.json"
+
     print(f"Writing {OUT.name}...")
     OUT.write_text(render_html(trimmed, sidecars_manifest=manifest))
 
@@ -1596,6 +1603,7 @@ footer{padding:18px 24px;color:var(--muted);font-size:12px;text-align:center;bor
   <div class="tab" data-tab="travel" role="tab" tabindex="0" aria-selected="false">Travel Advisories</div>
   <div class="tab" data-tab="mufon" role="tab" tabindex="0" aria-selected="false">UAP</div>
   <div class="tab" data-tab="city" role="tab" tabindex="0" aria-selected="false">City</div>
+  <div class="tab" data-tab="aviation" role="tab" tabindex="0" aria-selected="false">Aviation</div>
 </div>
 
 <!-- Global Period + Timeframe header bar removed: it was clutter on tabs
@@ -3494,6 +3502,195 @@ footer{padding:18px 24px;color:var(--muted);font-size:12px;text-align:center;bor
 
     </div>
   </div><!-- /tab-city -->
+
+  <!-- ============ AVIATION TAB ============
+       Pilots / Sport & MOSAIC / Fleet / Make-Model / Global-Macro / Live Traffic /
+       Used Market / Data Sources. Sidecar-loaded via SIDECAR_FOR_TAB.aviation from
+       /data-aviation.json (static; committed via .gitignore carve-out). The Live
+       Traffic sub-view fetches /data-opensky.json at runtime (hourly cron
+       aviation-opensky.yml) with a seed fallback. renderAviationTab() is a NO-OP
+       until the sidecar lands. All CSS is scoped to #aviation-tab (no bleed).
+       Ported from the aviation_v1_handoff bundle, 2026-06-01. -->
+  <div id="tab-aviation" class="hidden">
+    <div class="container"><!-- aviation -->
+    <div id="avLoading" class="hidden" style="text-align:center;padding:32px;color:var(--muted);font-size:13px">Loading aviation data…</div>
+    <style>
+/* aviation.css — scoped under #aviation-tab; safe to link globally */
+#aviation-tab{
+    --bg:#070b10; --panel:#0d141c; --panel-2:#111b25; --edge:#1c2a38;
+    --ink:#e6f0f5; --ink-dim:#7d93a4; --ink-faint:#4a5d6b;
+    --cyan:#36d9d2; --amber:#ffb547; --green:#3ddc84; --red:#ff5d6c; --violet:#9b8cff;
+    --grid:rgba(54,217,210,.08);
+    --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+    --sans:'IBM Plex Sans',system-ui,sans-serif;
+    color:var(--ink); font-family:var(--sans); background:
+      radial-gradient(900px 500px at 88% -10%, rgba(54,217,210,.07), transparent 60%),
+      radial-gradient(700px 400px at 0% 0%, rgba(255,181,71,.05), transparent 55%),
+      var(--bg);
+    padding:22px 26px 40px; line-height:1.45;
+  }
+  #aviation-tab *{box-sizing:border-box}
+  #aviation-tab .av-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--edge);padding-bottom:14px}
+  #aviation-tab .av-title{font-family:var(--mono);font-weight:700;font-size:20px;letter-spacing:.14em;text-transform:uppercase}
+  #aviation-tab .av-title b{color:var(--cyan)}
+  #aviation-tab .av-sub{color:var(--ink-dim);font-size:12.5px}
+  #aviation-tab .av-asof{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-faint);letter-spacing:.06em;text-transform:uppercase}
+  #aviation-tab .av-asof .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:6px;box-shadow:0 0 8px var(--green)}
+  #aviation-tab .av-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:18px 0 4px}
+  #aviation-tab .av-summary .scard{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--edge);border-radius:10px;padding:12px 13px;cursor:pointer;transition:.16s;position:relative;overflow:hidden}
+  #aviation-tab .av-summary .scard:hover{border-color:var(--cyan);transform:translateY(-2px)}
+  #aviation-tab .av-summary .scard .st{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan)}
+  #aviation-tab .av-summary .scard .sv{font-family:var(--mono);font-weight:700;font-size:21px;margin-top:6px}
+  #aviation-tab .av-summary .scard .ss{font-size:11px;color:var(--ink-dim);margin-top:3px}
+  #aviation-tab .av-nav{display:flex;gap:6px;margin:18px 0 20px;flex-wrap:wrap}
+  #aviation-tab .av-nav button{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;background:var(--panel);color:var(--ink-dim);border:1px solid var(--edge);padding:9px 15px;border-radius:7px;cursor:pointer;transition:.16s}
+  #aviation-tab .av-nav button:hover{color:var(--ink);border-color:#2c4254}
+  #aviation-tab .av-nav button.active{background:linear-gradient(180deg,var(--panel-2),var(--panel));color:var(--cyan);border-color:var(--cyan);box-shadow:0 0 0 1px rgba(54,217,210,.15) inset}
+  #aviation-tab .av-view{display:none;animation:avfade .3s ease}
+  #aviation-tab .av-view.active{display:block}
+  @keyframes avfade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  #aviation-tab .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:22px}
+  #aviation-tab .kpi{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--edge);border-radius:10px;padding:13px 14px;position:relative;overflow:hidden}
+  #aviation-tab .kpi::after{content:"";position:absolute;left:0;top:0;height:100%;width:3px;background:var(--cyan);opacity:.55}
+  #aviation-tab .kpi.amber::after{background:var(--amber)} #aviation-tab .kpi.violet::after{background:var(--violet)}
+  #aviation-tab .kpi .label{font-size:10.5px;color:var(--ink-dim);letter-spacing:.05em;text-transform:uppercase}
+  #aviation-tab .kpi .val{font-family:var(--mono);font-weight:700;font-size:23px;margin-top:6px;letter-spacing:-.01em}
+  #aviation-tab .kpi .delta{font-family:var(--mono);font-size:11px;margin-top:5px;color:var(--ink-faint)}
+  #aviation-tab .kpi .delta.up{color:var(--green)} #aviation-tab .kpi .delta.down{color:var(--red)}
+  #aviation-tab .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  #aviation-tab .panel{background:var(--panel);border:1px solid var(--edge);border-radius:11px;padding:16px 18px 18px;margin-bottom:16px}
+  #aviation-tab .panel h3{margin:0;font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.07em;text-transform:uppercase}
+  #aviation-tab .panel .ph-note{font-size:12px;color:var(--ink-dim);margin:5px 0 14px}
+  #aviation-tab .chart-wrap{position:relative;height:300px}
+  #aviation-tab .chart-wrap.tall{height:360px}
+  #aviation-tab table{width:100%;border-collapse:collapse;font-size:13px}
+  #aviation-tab thead th{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-dim);text-align:right;padding:8px 10px;border-bottom:1px solid var(--edge)}
+  #aviation-tab thead th:first-child{text-align:left}
+  #aviation-tab tbody td{padding:9px 10px;border-bottom:1px solid rgba(28,42,56,.5);font-family:var(--mono);text-align:right}
+  #aviation-tab tbody td:first-child{text-align:left;font-family:var(--sans);font-weight:500}
+  #aviation-tab tbody tr:hover{background:rgba(54,217,210,.04)}
+  #aviation-tab .pill{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:20px;border:1px solid var(--edge)}
+  #aviation-tab .pill.used{color:var(--green);border-color:rgba(61,220,132,.4)}
+  #aviation-tab .pill.avail{color:var(--ink-dim)}
+  #aviation-tab .takeaway{display:flex;gap:11px;background:rgba(255,181,71,.06);border:1px solid rgba(255,181,71,.25);border-radius:9px;padding:12px 14px;margin-bottom:18px;font-size:13px;color:#f1dcb4}
+  #aviation-tab .takeaway b{color:var(--amber)}
+  #aviation-tab .tl{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+  #aviation-tab .tl .step{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--edge);border-left:3px solid var(--cyan);border-radius:9px;padding:13px 15px}
+  #aviation-tab .tl .step .d{font-family:var(--mono);font-size:11px;color:var(--cyan);letter-spacing:.05em}
+  #aviation-tab .tl .step .t{font-weight:600;font-size:14px;margin:4px 0 6px}
+  #aviation-tab .tl .step .x{font-size:12px;color:var(--ink-dim);line-height:1.5}
+  #aviation-tab .src{font-size:11px;color:var(--ink-faint);margin-top:10px;line-height:1.6}
+  #aviation-tab .src b{color:var(--ink-dim);font-weight:600}
+  @media(max-width:760px){#aviation-tab .grid2,#aviation-tab .tl{grid-template-columns:1fr}}
+    </style>
+<section id="aviation-tab">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<div class="av-head">
+  <div>
+    <div class="av-title">&#9992; <b>Aviation</b> &mdash; Pilots, Fleet &amp; Air Travel</div>
+    <div class="av-sub">FAA airman &amp; registry data &middot; global commercial fleet &middot; used-aircraft inventory</div>
+  </div>
+  <div class="av-asof"><span class="dot"></span><span id="av-asof-stamp"></span></div>
+</div>
+<div class="av-summary" id="av-summary"></div>
+<div class="av-nav">
+  <button data-view="pilots" class="active">Pilots</button>
+  <button data-view="sport">Sport &amp; MOSAIC</button>
+  <button data-view="fleet">Fleet</button>
+  <button data-view="models">Make / Model</button>
+  <button data-view="macro">Global / Macro</button>
+  <button data-view="live">Live Traffic</button>
+  <button data-view="used">Used Market</button>
+  <button data-view="sources">Data Sources</button>
+</div>
+
+<div class="av-view active" id="view-pilots">
+  <div class="kpis" id="kpi-pilots"></div>
+  <div class="grid2">
+    <div class="panel"><h3>Active certificates by category</h3><div class="ph-note">Highest certificate held; glider &amp; rotorcraft are specialty types. FAA, Dec 31 2025.</div><div class="chart-wrap"><canvas id="c-cat"></canvas></div></div>
+    <div class="panel"><h3>Average age by certificate</h3><div class="ph-note">Overall pilot age trending <em>down</em> since 2018 as the student surge pulls it younger.</div><div class="chart-wrap"><canvas id="c-age"></canvas></div></div>
+  </div>
+  <div class="panel"><h3>Pipeline growth &middot; 2016 &rarr; 2025</h3><div class="ph-note">Total active pilots +52%; student pilots nearly tripled (+188%).</div><div class="chart-wrap"><canvas id="c-growth"></canvas></div></div>
+  <div class="src" id="src-pilots"></div>
+</div>
+
+<div class="av-view" id="view-sport">
+  <div class="takeaway"><span>&#9883;</span><div><b>MOSAIC is the biggest change to light aviation since 2004.</b> Light-sport aircraft are now defined by <b>stall speed, not weight</b> &mdash; so a sport pilot can fly roughly <b>70% of the existing GA fleet</b> (including the Cessna 172, 182 and Piper Cherokee), still with a driver's-license medical for day VFR and a one-passenger limit.</div></div>
+  <div class="kpis" id="kpi-sport"></div>
+  <div class="tl" id="tl-sport"></div>
+  <div class="grid2">
+    <div class="panel"><h3>What changed under MOSAIC</h3><div class="ph-note">Sport-pilot privileges effective Oct 22 2025; new LSA certification (Part 22) effective Jul 24 2026.</div><table id="t-changed"><thead><tr><th>Dimension</th><th style="text-align:left">Before</th><th style="text-align:left">After MOSAIC</th></tr></thead><tbody></tbody></table></div>
+    <div class="panel"><h3>GA fleet a sport pilot can now fly</h3><div class="ph-note">Estimated share of the ~204k active GA fleet meeting the 59-kt stall threshold.</div><div class="chart-wrap"><canvas id="c-flyable"></canvas></div></div>
+  </div>
+  <div class="src" id="src-sport"></div>
+</div>
+
+<div class="av-view" id="view-fleet">
+  <div class="takeaway"><span>&#8883;</span><div><b>The "decline" isn't the fleet &mdash; it's new production.</b> The GA fleet is huge but old; new piston output collapsed ~96% from its 1978 peak and only partially recovered. The much smaller commercial fleet grew steadily for decades.</div></div>
+  <div class="kpis" id="kpi-fleet"></div>
+  <div class="panel"><h3>US fixed-wing fleet by year built</h3><div class="ph-note">Currently-registered fixed-wing aircraft, by year manufactured (FAA registry). The 1970s boom and post-1980s collapse are unmistakable. Drones/UAS excluded.</div><div class="chart-wrap tall"><canvas id="c-fwyears"></canvas></div></div>
+  <div class="grid2">
+    <div class="panel"><h3>Registered aircraft by type</h3><div class="ph-note">All valid US registrations (incl. UAS now in the registry).</div><div class="chart-wrap"><canvas id="c-type"></canvas></div></div>
+    <div class="panel"><h3>New GA airplane shipments &mdash; the long decline</h3><div class="ph-note">GAMA, selected years. 1978 peak vs today.</div><div class="chart-wrap"><canvas id="c-ship"></canvas></div></div>
+  </div>
+  <div class="grid2">
+    <div class="panel"><h3>Active fleet: GA vs commercial</h3><div class="ph-note">Log scale. GA ~204k vs air-carrier in the thousands.</div><div class="chart-wrap"><canvas id="c-fleetcmp"></canvas></div></div>
+    <div class="panel"><h3>Air-carrier fleet growth (1965&ndash;2005)</h3><div class="ph-note">Active US air-carrier aircraft, Part 121/135 (BTS).</div><div class="chart-wrap"><canvas id="c-carrier"></canvas></div></div>
+  </div>
+  <div class="src" id="src-fleet"></div>
+</div>
+
+<div class="av-view" id="view-models">
+  <div class="panel"><h3>Top manufacturers by registered aircraft</h3><div class="ph-note">Valid US registrations. FAA registry, May 2026. (DJI / Zipline appear because large UAS are now N-registered.)</div><div class="chart-wrap tall"><canvas id="c-makes"></canvas></div></div>
+  <div class="grid2">
+    <div class="panel"><h3>Popular model families</h3><div class="ph-note">All variants grouped (e.g. every 172A&ndash;172S).</div><div class="chart-wrap"><canvas id="c-fam"></canvas></div></div>
+    <div class="panel"><h3>Top individual models</h3><div class="ph-note">Single most-registered model designations.</div><table id="t-models2"><thead><tr><th>Make / Model</th><th>Registered</th></tr></thead><tbody></tbody></table></div>
+  </div>
+  <div class="src" id="src-models"></div>
+</div>
+
+<div class="av-view" id="view-macro">
+  <div class="kpis" id="kpi-macro"></div>
+  <div class="grid2">
+    <div class="panel"><h3>World commercial fleet status</h3><div class="ph-note">Active vs stored/parked. IATA/Cirium, Jun 2025.</div><div class="chart-wrap"><canvas id="c-globalfleet"></canvas></div></div>
+    <div class="panel"><h3>Most-flown aircraft worldwide (2024)</h3><div class="ph-note">Flights operated, in millions. IATA WATS 2024.</div><div class="chart-wrap"><canvas id="c-acft"></canvas></div></div>
+  </div>
+  <div class="grid2">
+    <div class="panel"><h3>Largest airline fleets</h3><div class="ph-note">Mainline aircraft, top carriers. Dec 2025 (Planespotters/filings).</div><div class="chart-wrap"><canvas id="c-airlines"></canvas></div></div>
+    <div class="panel"><h3>Most flights operated (2026)</h3><div class="ph-note">Annual flights flown &mdash; utilization, not just fleet size.</div><div class="chart-wrap"><canvas id="c-airflights"></canvas></div></div>
+  </div>
+  <div class="panel"><h3>Busiest airports worldwide (2024)</h3><div class="ph-note">Total passengers, millions. ACI World. ATL has led 26 of the last 27 years.</div><div class="chart-wrap tall"><canvas id="c-airports"></canvas></div></div>
+  <div class="src" id="src-macro"></div>
+</div>
+
+<div class="av-view" id="view-live">
+  <div class="takeaway"><span>&#128752;</span><div><b>A live sample of who's flying right now.</b> Pulled from OpenSky's volunteer ADS-B network (free, non-commercial). Refreshes via a cron-committed snapshot &mdash; the number below is a global <em>sample</em>, densest over the US and Europe, not the full ~10&ndash;20k aircraft typically airborne worldwide at peak.</div></div>
+  <div class="kpis" id="kpi-live"></div>
+  <div class="grid2">
+    <div class="panel"><h3>Aircraft by country (live)</h3><div class="ph-note">Origin country of tracked aircraft, this snapshot.</div><div class="chart-wrap"><canvas id="c-live-country"></canvas></div></div>
+    <div class="panel"><h3>Airborne by altitude band (live)</h3><div class="ph-note">Cruising traffic clusters at 30&ndash;40k ft; low band is climb/descent &amp; GA.</div><div class="chart-wrap"><canvas id="c-live-alt"></canvas></div></div>
+  </div>
+  <div class="src" id="src-live"></div>
+</div>
+
+<div class="av-view" id="view-used">
+  <div class="kpis" id="kpi-used"></div>
+  <div class="grid2">
+    <div class="panel"><h3>Listings by manufacturer</h3><div class="ph-note">Active listings, all types. Controller.com, late May 2026.</div><div class="chart-wrap"><canvas id="c-make"></canvas></div></div>
+    <div class="panel"><h3>Price-band distribution &mdash; used single-engine piston</h3><div class="ph-note">Modeled estimate from observed listing ranges (not exact bucket counts).</div><div class="chart-wrap"><canvas id="c-band"></canvas></div></div>
+  </div>
+  <div class="panel"><h3>Popular models &mdash; inventory, price range &amp; turnover</h3><div class="ph-note">Live listings vs registered fleet. Controller.com + FAA registry.</div><table id="t-used"><thead><tr><th>Make / Model</th><th>Listings</th><th>Low</th><th>High</th><th>Typical</th></tr></thead><tbody></tbody></table></div>
+  <div class="src" id="src-used"></div>
+</div>
+
+<div class="av-view" id="view-sources">
+  <div class="panel"><h3>Aviation data landscape &mdash; what we can work with</h3><div class="ph-note">Sources behind this tab and what else is available to pull. "Free" = no key/cost; dynamic marketplace and live-tracking feeds carry ToS or subscription terms.</div>
+  <table id="t-sources"><thead><tr><th>Source</th><th style="text-align:left">What it gives</th><th style="text-align:left">Access</th><th style="text-align:left">Status</th></tr></thead><tbody></tbody></table></div>
+</div>
+</section>
+    </div>
+  </div><!-- /tab-aviation -->
 </div>
 
 <footer>
@@ -3591,6 +3788,7 @@ const SIDECAR_FOR_TAB = {
   whale: 'whale', defi: 'defi',
   cpi: 'cpi', supplies: 'supplies', metals: 'metals',
   travel: 'travel', mufon: 'mufon', city: 'city',
+  aviation: 'aviation',
 };
 
 // In share mode, transparently append ?share=<token> to all /api/* and
@@ -11161,7 +11359,179 @@ function renderAll(){
   if (state.tab === 'city'){
     renderCityTab();
   }
+  if (state.tab === 'aviation'){
+    renderAviationTab();
+  }
   renderCoverage();
+}
+
+// ============================================================================
+// AVIATION TAB — Pilots / Fleet / Air Travel (ported from aviation_v1_handoff)
+// ============================================================================
+// Sidecar-loaded via SIDECAR_FOR_TAB.aviation from /data-aviation.json. NO-OP
+// until the sidecar lands (DATA.aviation undefined on first paint). The Live
+// Traffic sub-view fetches /data-opensky.json at runtime (refreshed hourly by
+// aviation-opensky.yml) with a baked-in seed fallback (DATA.aviation.live.seed).
+// Bundle internals live inside avBootAviation() so its short-named consts
+// (C/D/fmt/…) never collide with top-level names and stay invisible to the
+// column-0 duplicate-const validator. Chart.js 4.4.0 is already loaded in <head>;
+// we deliberately DO NOT mutate Chart.defaults (that would restyle other charts).
+let _avBooted = false;
+function renderAviationTab(){
+  const data = DATA.aviation || null;
+  const loadingEl = document.getElementById('avLoading');
+  const sectionEl = document.getElementById('aviation-tab');
+  if (!data){
+    if (loadingEl){
+      loadingEl.classList.remove('hidden');
+      loadingEl.textContent = (SIDECAR_STATE.aviation === 'error')
+        ? 'Aviation data failed to load — check data-aviation.json.'
+        : 'Loading aviation data…';
+    }
+    if (sectionEl) sectionEl.classList.add('hidden');
+    return;
+  }
+  if (loadingEl) loadingEl.classList.add('hidden');
+  if (sectionEl) sectionEl.classList.remove('hidden');
+  if (_avBooted) return;   // sub-views persist in the DOM across tab switches; render once
+  _avBooted = true;
+  avBootAviation(data);
+}
+function avBootAviation(DATA){
+
+
+    const $ = s => document.querySelector(s);
+    const D = DATA;
+    const fmt = n => typeof n==="number" ? n.toLocaleString("en-US") : n;
+    const usd = n => "$"+(n>=1e6 ? (n/1e6).toFixed(2)+"M" : Math.round(n/1000)+"k");
+    const big = n => n>=1e9 ? (n/1e9).toFixed(1)+"B" : n>=1e6 ? (n/1e6).toFixed(0)+"M" : fmt(n);
+    const C = {cyan:"#36d9d2",amber:"#ffb547",green:"#3ddc84",red:"#ff5d6c",violet:"#9b8cff",
+               ink:"#e6f0f5",dim:"#7d93a4",grid:"rgba(54,217,210,.08)"};
+    const FM={family:"IBM Plex Mono"};
+    let drawn={};
+
+    function axes(xc,yc,xcb,ycb){return {
+      x:{ticks:{color:xc||C.dim,font:{family:"IBM Plex Mono",size:11},callback:xcb||undefined},grid:{color:C.grid}},
+      y:{ticks:{color:yc||C.dim,font:{family:"IBM Plex Mono",size:11},callback:ycb||undefined},grid:{color:C.grid}}};}
+    function base(extra){return Object.assign({responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{backgroundColor:"#0d141c",borderColor:"#1c2a38",borderWidth:1,titleColor:C.ink,bodyColor:C.dim,titleFont:FM,bodyFont:FM,padding:10}}},extra||{});}
+    function kpi(host,items){host.innerHTML=items.map(k=>{
+      const v=k.raw?k.val:big(k.val); const dc=k.dir==="up"?"up":k.dir==="down"?"down":"";
+      const cls=/2024|billings|peak|≤1989|stored|stall/i.test(k.label+(""+k.val))?"amber":"";
+      return `<div class="kpi ${cls}"><div class="label">${k.label}${k.approx?" ≈":""}</div><div class="val">${v}</div><div class="delta ${dc}">${k.delta||""}</div></div>`;}).join("");}
+    const valbl={plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.raw)}}}};
+
+    function pilots(){if(drawn.pilots)return;drawn.pilots=1;const p=D.pilots;
+      kpi($("#kpi-pilots"),p.kpis); $("#src-pilots").innerHTML=p.src;
+      new Chart($("#c-cat"),{type:"bar",data:{labels:p.categories.map(c=>c.name),datasets:[{data:p.categories.map(c=>c.n),backgroundColor:p.categories.map((c,i)=>i===0?C.cyan:"rgba(54,217,210,.5)"),borderColor:C.cyan,borderWidth:1,borderRadius:4}]},
+        options:base({indexAxis:"y",plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.raw)+" certificates"}}},scales:{x:axes(0,0,null,v=>v>=1000?v/1000+"k":v).x,y:{ticks:{color:C.ink,font:FM},grid:{display:false}}}})});
+      new Chart($("#c-age"),{type:"bar",data:{labels:p.avgAge.map(a=>a.name),datasets:[{data:p.avgAge.map(a=>a.age),backgroundColor:p.avgAge.map(a=>a.name==="All pilots"?C.amber:"rgba(255,181,71,.45)"),borderColor:C.amber,borderWidth:1,borderRadius:4}]},
+        options:base({plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+" yrs"}}},scales:{y:{beginAtZero:true,suggestedMax:55,ticks:{color:C.dim,font:FM,callback:v=>v+"y"},grid:{color:C.grid}},x:{ticks:{color:C.ink,font:FM},grid:{display:false}}}})});
+      new Chart($("#c-growth"),{type:"bar",data:{labels:p.growth.labels,datasets:[{label:"Total active",data:p.growth.total,backgroundColor:C.cyan,borderRadius:4},{label:"Student",data:p.growth.student,backgroundColor:C.amber,borderRadius:4}]},
+        options:base({plugins:{legend:{display:true,labels:{color:C.dim,font:FM,boxWidth:12}},tooltip:{callbacks:{label:c=>c.dataset.label+": "+fmt(c.raw)}}},scales:{y:axes(0,0,null,v=>v/1000+"k").y,x:{ticks:{color:C.ink,font:{family:"IBM Plex Mono",size:12}},grid:{display:false}}}})});}
+
+    function sport(){if(drawn.sport)return;drawn.sport=1;const s=D.sport;
+      kpi($("#kpi-sport"),s.kpis); $("#src-sport").innerHTML=s.src;
+      $("#tl-sport").innerHTML=s.timeline.map(t=>`<div class="step"><div class="d">${t.d}</div><div class="t">${t.t}</div><div class="x">${t.x}</div></div>`).join("");
+      $("#t-changed tbody").innerHTML=s.changed.map(r=>`<tr><td>${r[0]}</td><td style="text-align:left;color:var(--ink-dim)">${r[1]}</td><td style="text-align:left;color:var(--cyan)">${r[2]}</td></tr>`).join("");
+      new Chart($("#c-flyable"),{type:"doughnut",data:{labels:s.flyable.labels,datasets:[{data:s.flyable.vals,backgroundColor:[C.cyan,"#1c2a38"],borderColor:"#0d141c",borderWidth:2}]},
+        options:{responsive:true,maintainAspectRatio:false,cutout:"60%",plugins:{legend:{position:"bottom",labels:{color:C.dim,font:FM,boxWidth:12,padding:10}},tooltip:{callbacks:{label:c=>c.label+": ~"+fmt(c.raw)}}}}});}
+
+    function fleet(){if(drawn.fleet)return;drawn.fleet=1;const f=D.fleet;
+      kpi($("#kpi-fleet"),f.kpis); $("#src-fleet").innerHTML=f.src;
+      new Chart($("#c-fwyears"),{type:"line",data:{labels:f.fwYears.map(y=>y[0]),datasets:[{data:f.fwYears.map(y=>y[1]),borderColor:C.cyan,backgroundColor:"rgba(54,217,210,.10)",fill:true,tension:.25,pointRadius:0,borderWidth:2}]},
+        options:base({plugins:{legend:{display:false},tooltip:{callbacks:{title:c=>"Built "+c[0].label,label:c=>fmt(c.raw)+" still registered"}}},scales:{x:{ticks:{color:C.dim,font:{family:"IBM Plex Mono",size:10},maxTicksLimit:14},grid:{color:C.grid}},y:axes(0,0,null,v=>fmt(v)).y}})});
+      new Chart($("#c-type"),{type:"doughnut",data:{labels:f.byType.map(t=>t[0]),datasets:[{data:f.byType.map(t=>t[1]),backgroundColor:["#36d9d2","#2c8f8a","#ffb547","#9b8cff","#3ddc84","#ff5d6c","#5a7184","#3a5161","#243646","#1c2a38"],borderColor:"#0d141c",borderWidth:2}]},
+        options:{responsive:true,maintainAspectRatio:false,cutout:"55%",plugins:{legend:{position:"right",labels:{color:C.dim,font:{family:"IBM Plex Mono",size:10},boxWidth:11,padding:5}},tooltip:{callbacks:{label:c=>c.label+": "+fmt(c.raw)}}}}});
+      new Chart($("#c-ship"),{type:"line",data:{labels:f.shipments.labels,datasets:[{data:f.shipments.units,borderColor:C.red,backgroundColor:"rgba(255,93,108,.12)",fill:true,tension:.25,pointBackgroundColor:C.red,pointRadius:5,borderWidth:2}]},
+        options:base({plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.raw)+" new airplanes"}}},scales:{x:{ticks:{color:C.ink,font:FM},grid:{display:false}},y:axes(0,0,null,v=>fmt(v)).y}})});
+      new Chart($("#c-fleetcmp"),{type:"bar",data:{labels:f.activeFleet.labels,datasets:[{data:f.activeFleet.vals,backgroundColor:[C.cyan,C.amber],borderRadius:5}]},
+        options:base({indexAxis:"y",plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>"~"+fmt(c.raw)+" aircraft"}}},scales:{x:{type:"logarithmic",ticks:{color:C.dim,font:FM,callback:v=>fmt(v)},grid:{color:C.grid}},y:{ticks:{color:C.ink,font:{family:"IBM Plex Mono",size:12}},grid:{display:false}}}})});
+      new Chart($("#c-carrier"),{type:"line",data:{labels:f.carrier.labels,datasets:[{data:f.carrier.vals,borderColor:C.green,backgroundColor:"rgba(61,220,132,.12)",fill:true,tension:.3,pointBackgroundColor:C.green,pointRadius:4,borderWidth:2}]},
+        options:base({plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.raw)+" aircraft"}}},scales:{x:{ticks:{color:C.ink,font:FM},grid:{display:false}},y:axes(0,0,null,v=>fmt(v)).y}})});}
+
+    function models(){if(drawn.models)return;drawn.models=1;const m=D.models;
+      $("#src-models").innerHTML=m.src;
+      new Chart($("#c-makes"),{type:"bar",data:{labels:m.makes.map(x=>x[0]),datasets:[{data:m.makes.map(x=>x[1]),backgroundColor:m.makes.map((x,i)=>i<4?C.cyan:"rgba(54,217,210,.5)"),borderColor:C.cyan,borderWidth:1,borderRadius:4}]},
+        options:base({plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.raw)+" aircraft"}}},scales:{x:{ticks:{color:C.ink,font:{family:"IBM Plex Mono",size:10}},grid:{display:false}},y:axes(0,0,null,v=>v>=1000?v/1000+"k":v).y}})});
+      new Chart($("#c-fam"),{type:"bar",data:{labels:m.families.map(x=>x[0]),datasets:[{data:m.families.map(x=>x[1]),backgroundColor:C.amber,borderRadius:4}]},
+        options:base({indexAxis:"y",plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.raw)+" registered"}}},scales:{x:axes(0,0,null,v=>v>=1000?v/1000+"k":v).x,y:{ticks:{color:C.ink,font:{family:"IBM Plex Mono",size:10}},grid:{display:false}}}})});
+      $("#t-models2 tbody").innerHTML=m.models.map(x=>`<tr><td>${x[0]}</td><td>${fmt(x[1])}</td></tr>`).join("");}
+
+    function macro(){if(drawn.macro)return;drawn.macro=1;const m=D.macro;
+      kpi($("#kpi-macro"),m.kpis); $("#src-macro").innerHTML=m.src;
+      new Chart($("#c-globalfleet"),{type:"doughnut",data:{labels:m.globalFleet.labels,datasets:[{data:m.globalFleet.vals,backgroundColor:[C.cyan,"#3a5161"],borderColor:"#0d141c",borderWidth:2}]},
+        options:{responsive:true,maintainAspectRatio:false,cutout:"60%",plugins:{legend:{position:"bottom",labels:{color:C.dim,font:FM,boxWidth:12,padding:10}},tooltip:{callbacks:{label:c=>c.label+": "+fmt(c.raw)}}}}});
+      new Chart($("#c-acft"),{type:"bar",data:{labels:m.mostFlown.labels,datasets:[{data:m.mostFlown.flightsM,backgroundColor:[C.cyan,C.violet,C.amber],borderRadius:4}]},
+        options:base({plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+"M flights (2024)"}}},scales:{x:{ticks:{color:C.ink,font:{family:"IBM Plex Mono",size:11}},grid:{display:false}},y:axes(0,0,null,v=>v+"M").y}})});
+      new Chart($("#c-airlines"),{type:"bar",data:{labels:m.airlines.labels,datasets:[{data:m.airlines.vals,backgroundColor:m.airlines.labels.map((l,i)=>i<4?C.green:"rgba(61,220,132,.5)"),borderRadius:4}]},
+        options:base({indexAxis:"y",plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.raw)+" aircraft"}}},scales:{x:axes().x,y:{ticks:{color:C.ink,font:{family:"IBM Plex Mono",size:11}},grid:{display:false}}}})});
+      new Chart($("#c-airflights"),{type:"bar",data:{labels:m.airlineFlights.labels,datasets:[{data:m.airlineFlights.vals,backgroundColor:C.violet,borderRadius:4}]},
+        options:base({indexAxis:"y",plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.raw)+" flights (2026)"}}},scales:{x:axes(0,0,null,v=>(v/1e6).toFixed(1)+"M").x,y:{ticks:{color:C.ink,font:{family:"IBM Plex Mono",size:11}},grid:{display:false}}}})});
+      new Chart($("#c-airports"),{type:"bar",data:{labels:m.airports.labels,datasets:[{data:m.airports.vals,backgroundColor:m.airports.labels.map((l,i)=>i===0?C.amber:"rgba(255,181,71,.55)"),borderRadius:4}]},
+        options:base({plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+"M passengers (2024)"}}},scales:{x:{ticks:{color:C.ink,font:{family:"IBM Plex Mono",size:11}},grid:{display:false}},y:axes(0,0,null,v=>v+"M").y}})});}
+
+    function live(){if(drawn.live)return;drawn.live=1;
+      const apply=(s)=>{
+        const k=[
+          {label:"Aircraft airborne now",val:s.airborne,delta:"OpenSky · "+s.tstr,dir:"up"},
+          {label:"Total tracked",val:s.tracked,delta:"incl. on-ground",dir:"flat"},
+          {label:"On the ground",val:s.ground,delta:"taxiing / parked w/ ADS-B",dir:"flat"},
+          {label:"Top country (live)",val:s.byCountry[0][0],delta:fmt(s.byCountry[0][1])+" aircraft",dir:"flat",raw:true}
+        ];
+        kpi($("#kpi-live"),k); $("#src-live").innerHTML=D.live.src;
+        new Chart($("#c-live-country"),{type:"bar",data:{labels:s.byCountry.map(x=>x[0]),datasets:[{data:s.byCountry.map(x=>x[1]),backgroundColor:s.byCountry.map((x,i)=>i===0?C.cyan:"rgba(54,217,210,.5)"),borderRadius:4}]},
+          options:base({indexAxis:"y",plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.raw)+" aircraft"}}},scales:{x:axes().x,y:{ticks:{color:C.ink,font:{family:"IBM Plex Mono",size:11}},grid:{display:false}}}})});
+        new Chart($("#c-live-alt"),{type:"bar",data:{labels:s.byAlt.map(x=>x[0]),datasets:[{data:s.byAlt.map(x=>x[1]),backgroundColor:[C.green,"#2c8f8a","#36d9d2","#ffb547","#9b8cff"],borderRadius:4}]},
+          options:base({plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.raw)+" airborne"}}},scales:{x:{ticks:{color:C.ink,font:{family:"IBM Plex Mono",size:11}},grid:{display:false}},y:axes().y}})});
+      };
+      // prefer the cron-committed snapshot; fall back to the baked-in seed
+      fetch("data-opensky.json",{cache:"no-store"}).then(r=>r.ok?r.json():Promise.reject()).then(apply).catch(()=>apply(D.live.seed));}
+
+    function used(){if(drawn.used)return;drawn.used=1;const u=D.used;
+      kpi($("#kpi-used"),u.kpis); $("#src-used").innerHTML=u.src;
+      new Chart($("#c-make"),{type:"bar",data:{labels:u.byMake.labels,datasets:[{data:u.byMake.vals,backgroundColor:[C.cyan,C.amber,C.green],borderRadius:5}]},
+        options:base({plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.raw)+" listings"}}},scales:{x:{ticks:{color:C.ink,font:{family:"IBM Plex Mono",size:12}},grid:{display:false}},y:axes().y}})});
+      new Chart($("#c-band"),{type:"doughnut",data:{labels:u.priceBands.labels,datasets:[{data:u.priceBands.pct,backgroundColor:["#1c2a38","#2c6e6a","#36d9d2","#ffb547","#ff5d6c"],borderColor:"#0d141c",borderWidth:2}]},
+        options:{responsive:true,maintainAspectRatio:false,cutout:"58%",plugins:{legend:{position:"right",labels:{color:C.dim,font:FM,boxWidth:12,padding:8}},tooltip:{callbacks:{label:c=>c.label+": "+c.raw+"%"}}}}});
+      $("#t-used tbody").innerHTML=u.models.map(x=>`<tr><td>${x.m}</td><td>${x.n}</td><td>${usd(x.lo)}</td><td>${usd(x.hi)}</td><td>${x.typ}</td></tr>`).join("");}
+
+    function sources(){if(drawn.sources)return;drawn.sources=1;
+      $("#t-sources tbody").innerHTML=D.sources.map(r=>{
+        const used=/used/i.test(r[3]); const pill=used?'<span class="pill used">in use</span>':'<span class="pill avail">available</span>';
+        return `<tr><td>${r[0]}</td><td style="text-align:left;color:var(--ink-dim)">${r[1]}</td><td style="text-align:left;font-family:IBM Plex Mono;font-size:11px;color:var(--ink-faint)">${r[2]}</td><td style="text-align:left">${pill}</td></tr>`;}).join("");}
+
+    function go(v){ // activate a view by name (shared by nav + summary tiles)
+      document.querySelectorAll("#aviation-tab .av-nav button").forEach(x=>x.classList.toggle("active",x.dataset.view===v));
+      document.querySelectorAll("#aviation-tab .av-view").forEach(x=>x.classList.remove("active"));
+      const el=document.querySelector("#view-"+v); if(el){el.classList.add("active");} V[v]();
+    }
+    function summary(){
+      const u=D.used.byMake.vals.reduce((a,b)=>a+b,0);
+      const tiles=[
+        {v:"pilots",t:"Pilots",val:fmt(D.pilots.kpis[0].val),s:"active US pilots"},
+        {v:"sport",t:"Sport / MOSAIC",val:"~70%",s:"of GA fleet now flyable"},
+        {v:"fleet",t:"Fleet",val:fmt(D.registryTotal),s:"aircraft registered"},
+        {v:"models",t:"Top make",val:D.models.makes[0][0]+" "+fmt(D.models.makes[0][1]),s:"most registered"},
+        {v:"macro",t:"World fleet",val:fmt(D.macro.globalFleet.vals[0]+D.macro.globalFleet.vals[1]),s:"~103k flights/day"},
+        {v:"live",t:"Airborne now",val:fmt(D.live.seed.airborne),s:"live OpenSky sample"},
+        {v:"used",t:"Used market",val:fmt(u),s:"listings sampled"}
+      ];
+      document.getElementById("av-summary").innerHTML=tiles.map(x=>
+        `<div class="scard" data-go="${x.v}"><div class="st">${x.t}</div><div class="sv">${x.val}</div><div class="ss">${x.s}</div></div>`).join("");
+      document.querySelectorAll("#aviation-tab .scard").forEach(c=>c.addEventListener("click",()=>go(c.dataset.go)));
+    }
+
+    const V={pilots,sport,fleet,models,macro,live,used,sources};
+    document.querySelectorAll("#aviation-tab .av-nav button").forEach(b=>{
+      b.addEventListener("click",()=>go(b.dataset.view));
+    });
+    // Entry render: as-of stamp + summary tiles + default (Pilots) sub-view.
+    document.getElementById("av-asof-stamp").textContent=D.asOf;
+    summary();
+    pilots();
+
+
 }
 
 function selectTab(t){
@@ -11225,6 +11595,7 @@ function selectTab(t){
   document.getElementById('tab-travel').classList.toggle('hidden', t!=='travel');
   document.getElementById('tab-mufon').classList.toggle('hidden', t!=='mufon');
   document.getElementById('tab-city').classList.toggle('hidden', t!=='city');
+  document.getElementById('tab-aviation').classList.toggle('hidden', t!=='aviation');
   // Period selector now ETF-only. Trading and Whale tabs had it but it was
   // confusing (overlap with Timeframe / Range buttons); their charts are
   // daily by default. ETF Flows still needs Period for the daily/weekly/
