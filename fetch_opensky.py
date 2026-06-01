@@ -12,8 +12,19 @@ USAGE:
   python fetch_opensky.py                      # anonymous (~400 calls/day, lower res)
   OPENSKY_CLIENT_ID=... OPENSKY_CLIENT_SECRET=... python fetch_opensky.py   # OAuth2, higher limits
 
-OUTPUT: data-opensky.json  (the Live Traffic tile reads this)
+OUTPUT:
+  data-opensky.json           (the Live Traffic tile reads this — summary/snapshot)
+  data-opensky-positions.json (trimmed airborne positions for the Live Flight Map sub-view)
+
 LICENSE NOTE: OpenSky data is free for research / non-commercial use only.
+
+State-vector index reference (used by positions() and app.py renderer):
+  s[0]  icao24        s[1]  callsign       s[2]  origin_country
+  s[3]  time_position s[4]  last_contact   s[5]  latitude
+  s[6]  longitude     s[7]  baro_altitude  s[8]  on_ground
+  s[9]  velocity      s[10] true_track (heading)
+  s[11] vertical_rate s[12] sensors        s[13] geo_altitude
+  s[14] squawk        s[15] spi            s[16] position_source
 """
 import os, json, time, urllib.request, urllib.parse
 from collections import Counter
@@ -21,7 +32,10 @@ from collections import Counter
 API = "https://opensky-network.org/api/states/all"
 TOKEN_URL = "https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token"
 OUT = os.path.join(os.path.dirname(__file__), "data-opensky.json")
+OUT_POS = os.path.join(os.path.dirname(__file__), "data-opensky-positions.json")
 UA = "btc-eth-etf-dashboard/aviation-tab (non-commercial)"
+MAX_POINTS = 4000
+STR_CAP = 24  # max chars for any external string in positions output
 
 
 def get_token():
@@ -44,7 +58,20 @@ def fetch():
         headers["Authorization"] = "Bearer " + tok
     req = urllib.request.Request(API, headers=headers)
     with urllib.request.urlopen(req, timeout=45) as r:
-        return json.load(r)
+        # [A1] Guard against malformed or oversized responses.
+        # Read raw bytes with a hard cap (64 MB) so a runaway/corrupt
+        # response doesn't OOM the runner before json.loads() even runs.
+        MAX_BYTES = 64 * 1024 * 1024  # 64 MB; typical full-coverage payload ~10–20 MB
+        raw = r.read(MAX_BYTES + 1)
+        if len(raw) > MAX_BYTES:
+            raise ValueError(
+                f"opensky: response exceeds {MAX_BYTES // (1024*1024)} MB safety cap "
+                f"({len(raw)} bytes read) — refusing to parse"
+            )
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"opensky: malformed JSON in response — {exc}") from exc
 
 
 def summarize(d):
@@ -80,11 +107,72 @@ def summarize(d):
     }
 
 
+def positions(d):
+    """
+    Build a trimmed list of airborne aircraft positions for the Live Flight Map.
+
+    Each point is:  [lat, lon, alt_ft_or_null, heading_or_null, callsign, origin_country]
+
+    State-vector indices used:
+      s[5]  latitude        s[6]  longitude       s[7]  baro_altitude (metres)
+      s[8]  on_ground       s[10] true_track       s[1]  callsign
+      s[2]  origin_country
+
+    Caps output at MAX_POINTS (4000) and sanitizes external strings to STR_CAP chars.
+    """
+    sv = [s for s in (d.get("states") or []) if s and len(s) > 10]
+    ts = d.get("time") or int(time.time())
+    tstr = time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime(ts))
+
+    points = []
+    for s in sv:
+        # Only airborne aircraft with valid lat/lon
+        if s[8] is not False:
+            continue
+        lat, lon = s[5], s[6]
+        if lat is None or lon is None:
+            continue
+
+        # Altitude: baro metres → feet, rounded to int; None if missing
+        alt_m = s[7]
+        alt_ft = int(alt_m * 3.28084) if alt_m is not None else None
+
+        # True track / heading; None if missing
+        heading = s[10]
+        heading = round(heading, 1) if heading is not None else None
+
+        # Callsign: strip whitespace, cap to STR_CAP chars
+        raw_cs = s[1]
+        callsign = (raw_cs.strip()[:STR_CAP] if raw_cs else "")
+
+        # Origin country: strip whitespace, cap to STR_CAP chars
+        raw_oc = s[2]
+        origin_country = (raw_oc.strip()[:STR_CAP] if raw_oc else "")
+
+        points.append([round(lat, 3), round(lon, 3), alt_ft, heading, callsign, origin_country])
+
+        if len(points) >= MAX_POINTS:
+            break  # hard cap — already have 4000 points
+
+    return {
+        "ts": ts,
+        "tstr": tstr,
+        "count": len(points),
+        "points": points,
+    }
+
+
 def main():
-    snap = summarize(fetch())
+    d = fetch()
+    snap = summarize(d)
     with open(OUT, "w") as f:
         json.dump(snap, f)
     print(f"wrote {OUT}: {snap['airborne']:,} airborne / {snap['tracked']:,} tracked @ {snap['tstr']}")
+
+    pos = positions(d)
+    with open(OUT_POS, "w") as f:
+        json.dump(pos, f)
+    print(f"wrote {OUT_POS}: {pos['count']:,} airborne positions @ {pos['tstr']}")
 
 
 if __name__ == "__main__":

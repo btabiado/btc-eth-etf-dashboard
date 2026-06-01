@@ -63,5 +63,5 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git add data-opensky.json
+          git add data-opensky.json data-opensky-positions.json
           .github/scripts/api-commit.sh "aviation: refresh OpenSky snapshot $(date -u +%Y-%m-%dT%H:%MZ) [skip ci]"
