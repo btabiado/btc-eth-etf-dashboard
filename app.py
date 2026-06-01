@@ -3518,7 +3518,7 @@ footer{padding:18px 24px;color:var(--muted);font-size:12px;text-align:center;bor
 /* aviation.css — scoped under #aviation-tab; safe to link globally */
 #aviation-tab{
     --bg:#070b10; --panel:#0d141c; --panel-2:#111b25; --edge:#1c2a38;
-    --ink:#e6f0f5; --ink-dim:#7d93a4; --ink-faint:#4a5d6b;
+    --ink:#e6f0f5; --ink-dim:#7d93a4; --ink-faint:#6b8194;
     --cyan:#36d9d2; --amber:#ffb547; --green:#3ddc84; --red:#ff5d6c; --violet:#9b8cff;
     --grid:rgba(54,217,210,.08);
     --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
@@ -3531,7 +3531,7 @@ footer{padding:18px 24px;color:var(--muted);font-size:12px;text-align:center;bor
   }
   #aviation-tab *{box-sizing:border-box}
   #aviation-tab .av-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--edge);padding-bottom:14px}
-  #aviation-tab .av-title{font-family:var(--mono);font-weight:700;font-size:20px;letter-spacing:.14em;text-transform:uppercase}
+  #aviation-tab .av-title{margin:0;font-family:var(--mono);font-weight:700;font-size:20px;letter-spacing:.14em;text-transform:uppercase}
   #aviation-tab .av-title b{color:var(--cyan)}
   #aviation-tab .av-sub{color:var(--ink-dim);font-size:12.5px}
   #aviation-tab .av-asof{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-faint);letter-spacing:.06em;text-transform:uppercase}
@@ -3539,6 +3539,7 @@ footer{padding:18px 24px;color:var(--muted);font-size:12px;text-align:center;bor
   #aviation-tab .av-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:18px 0 4px}
   #aviation-tab .av-summary .scard{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--edge);border-radius:10px;padding:12px 13px;cursor:pointer;transition:.16s;position:relative;overflow:hidden}
   #aviation-tab .av-summary .scard:hover{border-color:var(--cyan);transform:translateY(-2px)}
+  #aviation-tab .av-summary .scard:focus-visible,#aviation-tab .av-nav button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
   #aviation-tab .av-summary .scard .st{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan)}
   #aviation-tab .av-summary .scard .sv{font-family:var(--mono);font-weight:700;font-size:21px;margin-top:6px}
   #aviation-tab .av-summary .scard .ss{font-size:11px;color:var(--ink-dim);margin-top:3px}
@@ -3581,14 +3582,15 @@ footer{padding:18px 24px;color:var(--muted);font-size:12px;text-align:center;bor
   #aviation-tab .tl .step .x{font-size:12px;color:var(--ink-dim);line-height:1.5}
   #aviation-tab .src{font-size:11px;color:var(--ink-faint);margin-top:10px;line-height:1.6}
   #aviation-tab .src b{color:var(--ink-dim);font-weight:600}
-  @media(max-width:760px){#aviation-tab .grid2,#aviation-tab .tl{grid-template-columns:1fr}}
+  @media(max-width:860px){#aviation-tab .grid2,#aviation-tab .tl{grid-template-columns:1fr}#aviation-tab .panel{overflow-x:auto}#aviation-tab table{min-width:480px}}
+  @media(prefers-reduced-motion:reduce){#aviation-tab .av-view{animation:none}#aviation-tab .av-summary .scard:hover{transform:none}}
     </style>
 <section id="aviation-tab">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <div class="av-head">
   <div>
-    <div class="av-title">&#9992; <b>Aviation</b> &mdash; Pilots, Fleet &amp; Air Travel</div>
+    <h2 class="av-title"><span aria-hidden="true">&#9992;</span> <b>Aviation</b> &mdash; Pilots, Fleet &amp; Air Travel</h2>
     <div class="av-sub">FAA airman &amp; registry data &middot; global commercial fleet &middot; used-aircraft inventory</div>
   </div>
   <div class="av-asof"><span class="dot"></span><span id="av-asof-stamp"></span></div>
@@ -3616,7 +3618,7 @@ footer{padding:18px 24px;color:var(--muted);font-size:12px;text-align:center;bor
 </div>
 
 <div class="av-view" id="view-sport">
-  <div class="takeaway"><span>&#9883;</span><div><b>MOSAIC is the biggest change to light aviation since 2004.</b> Light-sport aircraft are now defined by <b>stall speed, not weight</b> &mdash; so a sport pilot can fly roughly <b>70% of the existing GA fleet</b> (including the Cessna 172, 182 and Piper Cherokee), still with a driver's-license medical for day VFR and a one-passenger limit.</div></div>
+  <div class="takeaway"><span aria-hidden="true">&#9883;</span><div><b>MOSAIC is the biggest change to light aviation since 2004.</b> Light-sport aircraft are now defined by <b>stall speed, not weight</b> &mdash; so a sport pilot can fly roughly <b>70% of the existing GA fleet</b> (including the Cessna 172, 182 and Piper Cherokee), still with a driver's-license medical for day VFR and a one-passenger limit.</div></div>
   <div class="kpis" id="kpi-sport"></div>
   <div class="tl" id="tl-sport"></div>
   <div class="grid2">
@@ -3627,7 +3629,7 @@ footer{padding:18px 24px;color:var(--muted);font-size:12px;text-align:center;bor
 </div>
 
 <div class="av-view" id="view-fleet">
-  <div class="takeaway"><span>&#8883;</span><div><b>The "decline" isn't the fleet &mdash; it's new production.</b> The GA fleet is huge but old; new piston output collapsed ~96% from its 1978 peak and only partially recovered. The much smaller commercial fleet grew steadily for decades.</div></div>
+  <div class="takeaway"><span aria-hidden="true">&#8883;</span><div><b>The "decline" isn't the fleet &mdash; it's new production.</b> The GA fleet is huge but old; new piston output collapsed ~96% from its 1978 peak and only partially recovered. The much smaller commercial fleet grew steadily for decades.</div></div>
   <div class="kpis" id="kpi-fleet"></div>
   <div class="panel"><h3>US fixed-wing fleet by year built</h3><div class="ph-note">Currently-registered fixed-wing aircraft, by year manufactured (FAA registry). The 1970s boom and post-1980s collapse are unmistakable. Drones/UAS excluded.</div><div class="chart-wrap tall"><canvas id="c-fwyears"></canvas></div></div>
   <div class="grid2">
@@ -3665,8 +3667,8 @@ footer{padding:18px 24px;color:var(--muted);font-size:12px;text-align:center;bor
 </div>
 
 <div class="av-view" id="view-live">
-  <div class="takeaway"><span>&#128752;</span><div><b>A live sample of who's flying right now.</b> Pulled from OpenSky's volunteer ADS-B network (free, non-commercial). Refreshes via a cron-committed snapshot &mdash; the number below is a global <em>sample</em>, densest over the US and Europe, not the full ~10&ndash;20k aircraft typically airborne worldwide at peak.</div></div>
-  <div class="kpis" id="kpi-live"></div>
+  <div class="takeaway"><span aria-hidden="true">&#128752;</span><div><b>A live sample of who's flying right now.</b> Pulled from OpenSky's volunteer ADS-B network (free, non-commercial). Refreshes via a cron-committed snapshot &mdash; the number below is a global <em>sample</em>, densest over the US and Europe, not the full ~10&ndash;20k aircraft typically airborne worldwide at peak.</div></div>
+  <div class="kpis" id="kpi-live" aria-live="polite" aria-atomic="false"></div>
   <div class="grid2">
     <div class="panel"><h3>Aircraft by country (live)</h3><div class="ph-note">Origin country of tracked aircraft, this snapshot.</div><div class="chart-wrap"><canvas id="c-live-country"></canvas></div></div>
     <div class="panel"><h3>Airborne by altitude band (live)</h3><div class="ph-note">Cruising traffic clusters at 30&ndash;40k ft; low band is climb/descent &amp; GA.</div><div class="chart-wrap"><canvas id="c-live-alt"></canvas></div></div>
@@ -11384,9 +11386,12 @@ function renderAviationTab(){
   if (!data){
     if (loadingEl){
       loadingEl.classList.remove('hidden');
-      loadingEl.textContent = (SIDECAR_STATE.aviation === 'error')
+      const isErr = SIDECAR_STATE.aviation === 'error';
+      loadingEl.textContent = isErr
         ? 'Aviation data failed to load — check data-aviation.json.'
         : 'Loading aviation data…';
+      loadingEl.style.color = isErr ? '#ff5d6c' : '';
+      if (isErr) loadingEl.setAttribute('role','alert'); else loadingEl.removeAttribute('role');
     }
     if (sectionEl) sectionEl.classList.add('hidden');
     return;
@@ -11416,9 +11421,9 @@ function avBootAviation(DATA){
     function base(extra){return Object.assign({responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{backgroundColor:"#0d141c",borderColor:"#1c2a38",borderWidth:1,titleColor:C.ink,bodyColor:C.dim,titleFont:FM,bodyFont:FM,padding:10}}},extra||{});}
     function kpi(host,items){host.innerHTML=items.map(k=>{
-      const v=k.raw?k.val:big(k.val); const dc=k.dir==="up"?"up":k.dir==="down"?"down":"";
+      const v=k.raw?escapeHtml(String(k.val)):big(k.val); const dc=k.dir==="up"?"up":k.dir==="down"?"down":"";
       const cls=/2024|billings|peak|≤1989|stored|stall/i.test(k.label+(""+k.val))?"amber":"";
-      return `<div class="kpi ${cls}"><div class="label">${k.label}${k.approx?" ≈":""}</div><div class="val">${v}</div><div class="delta ${dc}">${k.delta||""}</div></div>`;}).join("");}
+      return `<div class="kpi ${cls}"><div class="label">${escapeHtml(k.label)}${k.approx?" ≈":""}</div><div class="val">${v}</div><div class="delta ${dc}">${escapeHtml(String(k.delta||""))}</div></div>`;}).join("");}
     const valbl={plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.raw)}}}};
 
     function pilots(){if(drawn.pilots)return;drawn.pilots=1;const p=D.pilots;
@@ -11477,7 +11482,7 @@ function avBootAviation(DATA){
           {label:"Aircraft airborne now",val:s.airborne,delta:"OpenSky · "+s.tstr,dir:"up"},
           {label:"Total tracked",val:s.tracked,delta:"incl. on-ground",dir:"flat"},
           {label:"On the ground",val:s.ground,delta:"taxiing / parked w/ ADS-B",dir:"flat"},
-          {label:"Top country (live)",val:s.byCountry[0][0],delta:fmt(s.byCountry[0][1])+" aircraft",dir:"flat",raw:true}
+          {label:"Top country (live)",val:(s.byCountry[0]||["—",0])[0],delta:fmt((s.byCountry[0]||["—",0])[1])+" aircraft",dir:"flat",raw:true}
         ];
         kpi($("#kpi-live"),k); $("#src-live").innerHTML=D.live.src;
         new Chart($("#c-live-country"),{type:"bar",data:{labels:s.byCountry.map(x=>x[0]),datasets:[{data:s.byCountry.map(x=>x[1]),backgroundColor:s.byCountry.map((x,i)=>i===0?C.cyan:"rgba(54,217,210,.5)"),borderRadius:4}]},
@@ -11502,7 +11507,7 @@ function avBootAviation(DATA){
         return `<tr><td>${r[0]}</td><td style="text-align:left;color:var(--ink-dim)">${r[1]}</td><td style="text-align:left;font-family:IBM Plex Mono;font-size:11px;color:var(--ink-faint)">${r[2]}</td><td style="text-align:left">${pill}</td></tr>`;}).join("");}
 
     function go(v){ // activate a view by name (shared by nav + summary tiles)
-      document.querySelectorAll("#aviation-tab .av-nav button").forEach(x=>x.classList.toggle("active",x.dataset.view===v));
+      document.querySelectorAll("#aviation-tab .av-nav button").forEach(x=>{const on=x.dataset.view===v;x.classList.toggle("active",on);x.setAttribute("aria-current",on?"true":"false");});
       document.querySelectorAll("#aviation-tab .av-view").forEach(x=>x.classList.remove("active"));
       const el=document.querySelector("#view-"+v); if(el){el.classList.add("active");} V[v]();
     }
@@ -11518,8 +11523,8 @@ function avBootAviation(DATA){
         {v:"used",t:"Used market",val:fmt(u),s:"listings sampled"}
       ];
       document.getElementById("av-summary").innerHTML=tiles.map(x=>
-        `<div class="scard" data-go="${x.v}"><div class="st">${x.t}</div><div class="sv">${x.val}</div><div class="ss">${x.s}</div></div>`).join("");
-      document.querySelectorAll("#aviation-tab .scard").forEach(c=>c.addEventListener("click",()=>go(c.dataset.go)));
+        `<div class="scard" data-go="${x.v}" role="button" tabindex="0" aria-label="${escapeHtml(x.t+": "+x.val+", "+x.s)}"><div class="st">${x.t}</div><div class="sv">${x.val}</div><div class="ss">${x.s}</div></div>`).join("");
+      document.querySelectorAll("#aviation-tab .scard").forEach(c=>{const g=()=>go(c.dataset.go);c.addEventListener("click",g);c.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();g();}});});
     }
 
     const V={pilots,sport,fleet,models,macro,live,used,sources};

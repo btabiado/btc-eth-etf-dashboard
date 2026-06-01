@@ -49,6 +49,12 @@ def fetch():
 
 def summarize(d):
     sv = [s for s in (d.get("states") or []) if s]
+    if not sv:
+        # Degraded/empty OpenSky pull (coverage gap or throttle): do NOT overwrite
+        # the last good snapshot with an empty one. Failing here means the workflow
+        # step exits non-zero (visibly red in Actions, like city-daily) and the prior
+        # committed data-opensky.json is retained; the client also has a seed fallback.
+        raise SystemExit("opensky: empty states payload; refusing to write an empty snapshot")
     air = [s for s in sv if len(s) > 8 and s[8] is False]
     ground = [s for s in sv if len(s) > 8 and s[8] is True]
     bands = {"0–10k ft": 0, "10–20k ft": 0, "20–30k ft": 0, "30–40k ft": 0, "40k+ ft": 0}
