@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Snowflake Summit — Partner Vendor Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0b1020; --panel:#121a30; --panel2:#172241; --border:#243352;
+    --text:#e8eeff; --muted:#8da2c8; --accent:#29b5e8; --accent2:#11567f;
+    --good:#34d399; --warn:#fbbf24; --gem:#a78bfa;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       background:linear-gradient(180deg,#0b1020,#0d1426);color:var(--text)}
+  header{padding:26px 28px 18px;border-bottom:1px solid var(--border);
+         background:linear-gradient(120deg,#0e1730,#10243f)}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#29b5e8,#1b7fb8);
+        display:flex;align-items:center;justify-content:center;font-weight:800;color:#06121f}
+  h1{font-size:21px;margin:0;letter-spacing:.01em}
+  .sub{color:var(--muted);font-size:13px;margin-top:4px}
+  .wrap{max-width:1280px;margin:0 auto;padding:22px 24px 60px}
+  .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin:6px 0 26px}
+  .kpi{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 15px}
+  .kpi .v{font-size:26px;font-weight:800;color:#fff;line-height:1}
+  .kpi .l{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:8px}
+  .kpi .s{font-size:11px;color:var(--accent);margin-top:3px}
+  .grid{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:22px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px 18px}
+  .card h3{margin:0 0 12px;font-size:14px;font-weight:700}
+  .card h3 .hint{font-weight:400;color:var(--muted);font-size:12px;margin-left:6px}
+  canvas{max-height:300px}
+  .mustsee{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:8px}
+  .ms{background:linear-gradient(160deg,#15233f,#101a30);border:1px solid var(--border);
+      border-radius:12px;padding:14px;position:relative;overflow:hidden}
+  .ms .rk{position:absolute;top:10px;right:12px;font-size:30px;font-weight:900;color:rgba(41,181,232,.18)}
+  .ms .nm{font-size:15px;font-weight:700}
+  .ms .ct{font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;margin:2px 0 6px}
+  .ms .bl{font-size:12px;color:var(--muted);min-height:32px}
+  .ms .sc{display:flex;align-items:baseline;gap:8px;margin-top:8px}
+  .ms .sc b{font-size:24px;color:#fff}
+  .ms .sc span{font-size:11px;color:var(--muted)}
+  .badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;margin-right:5px;margin-top:6px;font-weight:600}
+  .b-tier{background:rgba(41,181,232,.16);color:#7fd6f5}
+  .b-poy{background:rgba(52,211,153,.16);color:var(--good)}
+  .b-ai{background:rgba(167,139,250,.18);color:var(--gem)}
+  .b-native{background:rgba(251,191,36,.15);color:var(--warn)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--border)}
+  th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer;user-select:none}
+  th:hover{color:var(--text)}
+  tbody tr:hover{background:var(--panel2)}
+  td.name{font-weight:600}
+  td a{color:var(--accent);text-decoration:none}
+  td a:hover{text-decoration:underline}
+  .scorebar{display:inline-block;height:8px;border-radius:4px;background:linear-gradient(90deg,#1b7fb8,#29b5e8);vertical-align:middle;margin-right:8px}
+  .pill{font-size:11px;padding:2px 8px;border-radius:20px;background:var(--panel2);border:1px solid var(--border)}
+  .tier-Diamond{color:#bfe9ff}.tier-Platinum{color:#dde7ff}.tier-Gold{color:#ffd778}
+  .tier-Silver{color:#cdd6e6}.tier-Bronze{color:#d8a47a}
+  .gem-row td.name::after{content:" 💎";font-size:11px}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+  .controls input,.controls select{background:var(--panel2);border:1px solid var(--border);color:var(--text);
+       border-radius:8px;padding:7px 10px;font-size:13px}
+  .note{color:var(--muted);font-size:12px;margin-top:18px;line-height:1.5;border-top:1px solid var(--border);padding-top:14px}
+  .modelbox{font-size:12px;color:var(--muted);line-height:1.6}
+  .modelbox code{color:var(--accent)}
+  @media(max-width:1000px){.kpis{grid-template-columns:repeat(3,1fr)}.grid{grid-template-columns:1fr}.mustsee{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo">❄</div>
+    <div>
+      <h1>Snowflake Summit — Partner Vendor Dashboard</h1>
+      <div class="sub" id="subhead"></div>
+    </div>
+  </div>
+</header>
+<div class="wrap">
+  <div class="kpis" id="kpis"></div>
+
+  <h3 style="margin:6px 0 12px;font-size:15px">⭐ Must-See Vendors <span style="color:var(--muted);font-weight:400;font-size:12px">— highest Check-Out Score</span></h3>
+  <div class="mustsee" id="mustsee"></div>
+
+  <div class="grid" style="margin-top:22px">
+    <div class="card"><h3>Top 10 by Check-Out Score</h3><canvas id="topChart"></canvas></div>
+    <div class="card"><h3>Vendors by Sponsorship Tier</h3><canvas id="tierChart"></canvas></div>
+  </div>
+  <div class="grid">
+    <div class="card"><h3>Vendors by Category</h3><canvas id="catChart"></canvas></div>
+    <div class="card"><h3>Avg Score by Category <span class="hint">where is the strongest field?</span></h3><canvas id="catScoreChart"></canvas></div>
+  </div>
+
+  <div class="card">
+    <h3>All Partner Vendors <span class="hint">click a column to sort · 💎 = hidden gem</span></h3>
+    <div class="controls">
+      <input id="search" placeholder="Search vendor / category…" style="flex:1;min-width:200px"/>
+      <select id="catFilter"><option value="">All categories</option></select>
+      <select id="tierFilter"><option value="">All tiers</option></select>
+    </div>
+    <table id="vtable">
+      <thead><tr>
+        <th data-k="rank">#</th><th data-k="name">Vendor</th><th data-k="category">Category</th>
+        <th data-k="tier">Tier</th><th data-k="booth">Booth</th><th data-k="g2_rating">Rating</th>
+        <th data-k="score">Check-Out Score</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h3>How the Check-Out Score works</h3>
+    <div class="modelbox" id="model"></div>
+  </div>
+
+  <div class="note" id="note"></div>
+</div>
+
+<script>
+const DATA = {"generated": "2026-06-02 16:37 UTC", "source": "vendors.json", "weights": {"tier": 25, "rating": 20, "integration": 15, "ai": 15, "momentum": 15, "recognition": 10}, "kpis": [{"label": "Partner Vendors", "value": 35, "sub": "16 categories"}, {"label": "Diamond + Platinum", "value": 10, "sub": "top-tier sponsors"}, {"label": "Snowflake Native Apps", "value": 21, "sub": "60% of floor"}, {"label": "AI / ML Focused", "value": 18, "sub": "51% of vendors"}, {"label": "Partners of the Year", "value": 7, "sub": "Snowflake-recognized"}, {"label": "Avg Check-Out Score", "value": 69.5, "sub": "avg rating 4.45/5"}], "by_cat": {"ML & AI Platform": 2, "Data Integration": 4, "BI & Visualization": 4, "Consulting & SI": 4, "Data Observability": 3, "Data Security": 2, "Transformation": 2, "Reverse ETL": 2, "Streaming & CDC": 2, "Data Collaboration": 1, "Governance & Catalog": 4, "Analytics & Notebooks": 1, "Behavioral Data": 1, "Orchestration": 1, "Data Modeling": 1, "Semantic Layer": 1}, "by_tier": {"Diamond": 4, "Platinum": 6, "Gold": 10, "Silver": 9, "Bronze": 6}, "cat_scores": {"ML & AI Platform": 86.4, "Data Integration": 78.0, "BI & Visualization": 80.4, "Consulting & SI": 76.7, "Data Observability": 68.1, "Data Security": 62.4, "Transformation": 74.2, "Reverse ETL": 67.0, "Streaming & CDC": 66.3, "Data Collaboration": 67.3, "Governance & Catalog": 59.0, "Analytics & Notebooks": 62.9, "Behavioral Data": 56.3, "Orchestration": 53.6, "Data Modeling": 51.6, "Semantic Layer": 46.4}, "top10": [{"name": "Dataiku", "category": "ML & AI Platform", "tier": "Platinum", "booth": "220", "website": "https://www.dataiku.com", "hq": "New York, NY", "founded": 2013, "funding_m": 846, "employees": 1100, "g2_rating": 4.4, "native_app": true, "ai_focus": true, "partner_of_year": true, "blurb": "End-to-end platform for analytics, ML, and generative AI.", "score": 93.2, "score_breakdown": {"tier": 21.2, "rating": 17.6, "integration": 15.0, "ai": 15.0, "momentum": 14.3, "recognition": 10.0}, "rank": 1, "hidden_gem": false}, {"name": "Informatica", "category": "Data Integration", "tier": "Platinum", "booth": "130", "website": "https://www.informatica.com", "hq": "Redwood City, CA", "founded": 1993, "funding_m": null, "employees": 5500, "g2_rating": 4.3, "native_app": true, "ai_focus": true, "partner_of_year": true, "blurb": "Enterprise data management cloud with AI-powered integration and governance.", "score": 92.0, "score_breakdown": {"tier": 21.2, "rating": 17.2, "integration": 15.0, "ai": 15.0, "momentum": 13.5, "recognition": 10.0}, "rank": 2, "hidden_gem": false}, {"name": "Tableau", "category": "BI & Visualization", "tier": "Diamond", "booth": "110", "website": "https://www.tableau.com", "hq": "Seattle, WA", "founded": 2003, "funding_m": null, "employees": 5000, "g2_rating": 4.4, "native_app": true, "ai_focus": true, "partner_of_year": false, "blurb": "Market-leading visual analytics (Salesforce) with native Snowflake connectivity.", "score": 86.1, "score_breakdown": {"tier": 25.0, "rating": 17.6, "integration": 15.0, "ai": 15.0, "momentum": 13.5, "recognition": 0.0}, "rank": 3, "hidden_gem": false}, {"name": "Fivetran", "category": "Data Integration", "tier": "Diamond", "booth": "101", "website": "https://www.fivetran.com", "hq": "Oakland, CA", "founded": 2012, "funding_m": 730, "employees": 1300, "g2_rating": 4.2, "native_app": true, "ai_focus": false, "partner_of_year": true, "blurb": "Automated data movement into Snowflake; Data Integration Partner of the Year.", "score": 85.5, "score_breakdown": {"tier": 25.0, "rating": 16.8, "integration": 15.0, "ai": 4.5, "momentum": 14.2, "recognition": 10.0}, "rank": 4, "hidden_gem": false}, {"name": "Deloitte", "category": "Consulting & SI", "tier": "Diamond", "booth": "150", "website": "https://www.deloitte.com", "hq": "London, UK", "founded": 1845, "funding_m": null, "employees": 450000, "g2_rating": 4.1, "native_app": false, "ai_focus": true, "partner_of_year": true, "blurb": "Global SI delivering large-scale Snowflake + AI transformations.", "score": 85.2, "score_breakdown": {"tier": 25.0, "rating": 16.4, "integration": 5.2, "ai": 15.0, "momentum": 13.5, "recognition": 10.0}, "rank": 5, "hidden_gem": false}, {"name": "Sigma Computing", "category": "BI & Visualization", "tier": "Platinum", "booth": "305", "website": "https://www.sigmacomputing.com", "hq": "San Francisco, CA", "founded": 2014, "funding_m": 581, "employees": 800, "g2_rating": 4.5, "native_app": true, "ai_focus": false, "partner_of_year": true, "blurb": "Spreadsheet-fast cloud BI that queries Snowflake live.", "score": 82.3, "score_breakdown": {"tier": 21.2, "rating": 18.0, "integration": 15.0, "ai": 4.5, "momentum": 13.6, "recognition": 10.0}, "rank": 6, "hidden_gem": false}, {"name": "DataRobot", "category": "ML & AI Platform", "tier": "Gold", "booth": "226", "website": "https://www.datarobot.com", "hq": "Boston, MA", "founded": 2012, "funding_m": 1000, "employees": 1000, "g2_rating": 4.4, "native_app": true, "ai_focus": true, "partner_of_year": false, "blurb": "Enterprise AI platform for building and governing predictive + generative models.", "score": 79.6, "score_breakdown": {"tier": 17.5, "rating": 17.6, "integration": 15.0, "ai": 15.0, "momentum": 14.5, "recognition": 0.0}, "rank": 7, "hidden_gem": false}, {"name": "ThoughtSpot", "category": "BI & Visualization", "tier": "Gold", "booth": "312", "website": "https://www.thoughtspot.com", "hq": "Mountain View, CA", "founded": 2012, "funding_m": 663, "employees": 900, "g2_rating": 4.4, "native_app": true, "ai_focus": true, "partner_of_year": false, "blurb": "Natural-language, AI-driven analytics on top of Snowflake.", "score": 78.9, "score_breakdown": {"tier": 17.5, "rating": 17.6, "integration": 15.0, "ai": 15.0, "momentum": 13.8, "recognition": 0.0}, "rank": 8, "hidden_gem": false}, {"name": "Matillion", "category": "Data Integration", "tier": "Gold", "booth": "120", "website": "https://www.matillion.com", "hq": "Manchester, UK", "founded": 2011, "funding_m": 310, "employees": 600, "g2_rating": 4.4, "native_app": true, "ai_focus": true, "partner_of_year": false, "blurb": "Low-code ETL/ELT and data pipelines optimized for Snowflake.", "score": 77.6, "score_breakdown": {"tier": 17.5, "rating": 17.6, "integration": 15.0, "ai": 15.0, "momentum": 12.5, "recognition": 0.0}, "rank": 9, "hidden_gem": false}, {"name": "Monte Carlo", "category": "Data Observability", "tier": "Gold", "booth": "430", "website": "https://www.montecarlodata.com", "hq": "San Francisco, CA", "founded": 2019, "funding_m": 236, "employees": 350, "g2_rating": 4.5, "native_app": true, "ai_focus": true, "partner_of_year": false, "blurb": "Data + AI observability that catches broken pipelines before users do.", "score": 77.2, "score_breakdown": {"tier": 17.5, "rating": 18.0, "integration": 15.0, "ai": 15.0, "momentum": 11.7, "recognition": 0.0}, "rank": 10, "hidden_gem": false}], "must_see": [{"name": "Dataiku", "category": "ML & AI Platform", "tier": "Platinum", "booth": "220", "website": "https://www.dataiku.com", "hq": "New York, NY", "founded": 2013, "funding_m": 846, "employees": 1100, "g2_rating": 4.4, "native_app": true, "ai_focus": true, "partner_of_year": true, "blurb": "End-to-end platform for analytics, ML, and generative AI.", "score": 93.2, "score_breakdown": {"tier": 21.2, "rating": 17.6, "integration": 15.0, "ai": 15.0, "momentum": 14.3, "recognition": 10.0}, "rank": 1, "hidden_gem": false}, {"name": "Informatica", "category": "Data Integration", "tier": "Platinum", "booth": "130", "website": "https://www.informatica.com", "hq": "Redwood City, CA", "founded": 1993, "funding_m": null, "employees": 5500, "g2_rating": 4.3, "native_app": true, "ai_focus": true, "partner_of_year": true, "blurb": "Enterprise data management cloud with AI-powered integration and governance.", "score": 92.0, "score_breakdown": {"tier": 21.2, "rating": 17.2, "integration": 15.0, "ai": 15.0, "momentum": 13.5, "recognition": 10.0}, "rank": 2, "hidden_gem": false}, {"name": "Tableau", "category": "BI & Visualization", "tier": "Diamond", "booth": "110", "website": "https://www.tableau.com", "hq": "Seattle, WA", "founded": 2003, "funding_m": null, "employees": 5000, "g2_rating": 4.4, "native_app": true, "ai_focus": true, "partner_of_year": false, "blurb": "Market-leading visual analytics (Salesforce) with native Snowflake connectivity.", "score": 86.1, "score_breakdown": {"tier": 25.0, "rating": 17.6, "integration": 15.0, "ai": 15.0, "momentum": 13.5, "recognition": 0.0}, "rank": 3, "hidden_gem": false}, {"name": "Fivetran", "category": "Data Integration", "tier": "Diamond", "booth": "101", "website": "https://www.fivetran.com", "hq": "Oakland, CA", "founded": 2012, "funding_m": 730, "employees": 1300, "g2_rating": 4.2, "native_app": true, "ai_focus": false, "partner_of_year": true, "blurb": "Automated data movement into Snowflake; Data Integration Partner of the Year.", "score": 85.5, "score_breakdown": {"tier": 25.0, "rating": 16.8, "integration": 15.0, "ai": 4.5, "momentum": 14.2, "recognition": 10.0}, "rank": 4, "hidden_gem": false}, {"name": "Deloitte", "category": "Consulting & SI", "tier": "Diamond", "booth": "150", "website": "https://www.deloitte.com", "hq": "London, UK", "founded": 1845, "funding_m": null, "employees": 450000, "g2_rating": 4.1, "native_app": false, "ai_focus": true, "partner_of_year": true, "blurb": "Global SI delivering large-scale Snowflake + AI transformations.", "score": 85.2, "score_breakdown": {"tier": 25.0, "rating": 16.4, "integration": 5.2, "ai": 15.0, "momentum": 13.5, "recognition": 10.0}, "rank": 5, "hidden_gem": false}, {"name": "Sigma Computing", "category": "BI & Visualization", "tier": "Platinum", "booth": "305", "website": "https://www.sigmacomputing.com", "hq": "San Francisco, CA", "founded": 2014, "funding_m": 581, "employees": 800, "g2_rating": 4.5, "native_app": true, "ai_focus": false, "partner_of_year": true, "blurb": "Spreadsheet-fast cloud BI that queries Snowflake live.", "score": 82.3, "score_breakdown": {"tier": 21.2, "rating": 18.0, "integration": 15.0, "ai": 4.5, "momentum": 13.6, "recognition": 10.0}, "rank": 6, "hidden_gem": false}], "gems": [{"name": "Hightouch", "category": "Reverse ETL", "tier": "Silver", "booth": "534", "website": "https://hightouch.com", "hq": "San Francisco, CA", "founded": 2018, "funding_m": 91, "employees": 220, "g2_rating": 4.7, "native_app": true, "ai_focus": true, "partner_of_year": false, "blurb": "Composable CDP and data activation built on the warehouse.", "score": 72.7, "score_breakdown": {"tier": 13.8, "rating": 18.8, "integration": 15.0, "ai": 15.0, "momentum": 10.2, "recognition": 0.0}, "rank": 16, "hidden_gem": true}, {"name": "Anomalo", "category": "Data Observability", "tier": "Silver", "booth": "552", "website": "https://www.anomalo.com", "hq": "Palo Alto, CA", "founded": 2018, "funding_m": 82, "employees": 120, "g2_rating": 4.6, "native_app": true, "ai_focus": true, "partner_of_year": false, "blurb": "No-code, ML-based data quality monitoring for Snowflake tables.", "score": 71.7, "score_breakdown": {"tier": 13.8, "rating": 18.4, "integration": 15.0, "ai": 15.0, "momentum": 9.5, "recognition": 0.0}, "rank": 19, "hidden_gem": true}, {"name": "Atlan", "category": "Governance & Catalog", "tier": "Silver", "booth": "520", "website": "https://atlan.com", "hq": "New York, NY", "founded": 2018, "funding_m": 206, "employees": 400, "g2_rating": 4.6, "native_app": false, "ai_focus": true, "partner_of_year": false, "blurb": "Active metadata and modern data catalog with AI-assisted discovery.", "score": 64.1, "score_breakdown": {"tier": 13.8, "rating": 18.4, "integration": 5.2, "ai": 15.0, "momentum": 11.7, "recognition": 0.0}, "rank": 22, "hidden_gem": true}, {"name": "Hex", "category": "Analytics & Notebooks", "tier": "Silver", "booth": "525", "website": "https://hex.tech", "hq": "San Francisco, CA", "founded": 2019, "funding_m": 95, "employees": 200, "g2_rating": 4.7, "native_app": false, "ai_focus": true, "partner_of_year": false, "blurb": "Collaborative data notebooks with an AI copilot for analysts.", "score": 62.9, "score_breakdown": {"tier": 13.8, "rating": 18.8, "integration": 5.2, "ai": 15.0, "momentum": 10.1, "recognition": 0.0}, "rank": 23, "hidden_gem": true}, {"name": "Census", "category": "Reverse ETL", "tier": "Silver", "booth": "530", "website": "https://www.getcensus.com", "hq": "San Francisco, CA", "founded": 2018, "funding_m": 80, "employees": 150, "g2_rating": 4.6, "native_app": true, "ai_focus": false, "partner_of_year": false, "blurb": "Syncs Snowflake data back into the SaaS tools teams use daily.", "score": 61.3, "score_breakdown": {"tier": 13.8, "rating": 18.4, "integration": 15.0, "ai": 4.5, "momentum": 9.7, "recognition": 0.0}, "rank": 24, "hidden_gem": true}], "vendors": [{"name": "Dataiku", "category": "ML & AI Platform", "tier": "Platinum", "booth": "220", "website": "https://www.dataiku.com", "hq": "New York, NY", "founded": 2013, "funding_m": 846, "employees": 1100, "g2_rating": 4.4, "native_app": true, "ai_focus": true, "partner_of_year": true, "blurb": "End-to-end platform for analytics, ML, and generative AI.", "score": 93.2, "score_breakdown": {"tier": 21.2, "rating": 17.6, "integration": 15.0, "ai": 15.0, "momentum": 14.3, "recognition": 10.0}, "rank": 1, "hidden_gem": false}, {"name": "Informatica", "category": "Data Integration", "tier": "Platinum", "booth": "130", "website": "https://www.informatica.com", "hq": "Redwood City, CA", "founded": 1993, "funding_m": null, "employees": 5500, "g2_rating": 4.3, "native_app": true, "ai_focus": true, "partner_of_year": true, "blurb": "Enterprise data management cloud with AI-powered integration and governance.", "score": 92.0, "score_breakdown": {"tier": 21.2, "rating": 17.2, "integration": 15.0, "ai": 15.0, "momentum": 13.5, "recognition": 10.0}, "rank": 2, "hidden_gem": false}, {"name": "Tableau", "category": "BI & Visualization", "tier": "Diamond", "booth": "110", "website": "https://www.tableau.com", "hq": "Seattle, WA", "founded": 2003, "funding_m": null, "employees": 5000, "g2_rating": 4.4, "native_app": true, "ai_focus": true, "partner_of_year": false, "blurb": "Market-leading visual analytics (Salesforce) with native Snowflake connectivity.", "score": 86.1, "score_breakdown": {"tier": 25.0, "rating": 17.6, "integration": 15.0, "ai": 15.0, "momentum": 13.5, "recognition": 0.0}, "rank": 3, "hidden_gem": false}, {"name": "Fivetran", "category": "Data Integration", "tier": "Diamond", "booth": "101", "website": "https://www.fivetran.com", "hq": "Oakland, CA", "founded": 2012, "funding_m": 730, "employees": 1300, "g2_rating": 4.2, "native_app": true, "ai_focus": false, "partner_of_year": true, "blurb": "Automated data movement into Snowflake; Data Integration Partner of the Year.", "score": 85.5, "score_breakdown": {"tier": 25.0, "rating": 16.8, "integration": 15.0, "ai": 4.5, "momentum": 14.2, "recognition": 10.0}, "rank": 4, "hidden_gem": false}, {"name": "Deloitte", "category": "Consulting & SI", "tier": "Diamond", "booth": "150", "website": "https://www.deloitte.com", "hq": "London, UK", "founded": 1845, "funding_m": null, "employees": 450000, "g2_rating": 4.1, "native_app": false, "ai_focus": true, "partner_of_year": true, "blurb": "Global SI delivering large-scale Snowflake + AI transformations.", "score": 85.2, "score_breakdown": {"tier": 25.0, "rating": 16.4, "integration": 5.2, "ai": 15.0, "momentum": 13.5, "recognition": 10.0}, "rank": 5, "hidden_gem": false}, {"name": "Sigma Computing", "category": "BI & Visualization", "tier": "Platinum", "booth": "305", "website": "https://www.sigmacomputing.com", "hq": "San Francisco, CA", "founded": 2014, "funding_m": 581, "employees": 800, "g2_rating": 4.5, "native_app": true, "ai_focus": false, "partner_of_year": true, "blurb": "Spreadsheet-fast cloud BI that queries Snowflake live.", "score": 82.3, "score_breakdown": {"tier": 21.2, "rating": 18.0, "integration": 15.0, "ai": 4.5, "momentum": 13.6, "recognition": 10.0}, "rank": 6, "hidden_gem": false}, {"name": "DataRobot", "category": "ML & AI Platform", "tier": "Gold", "booth": "226", "website": "https://www.datarobot.com", "hq": "Boston, MA", "founded": 2012, "funding_m": 1000, "employees": 1000, "g2_rating": 4.4, "native_app": true, "ai_focus": true, "partner_of_year": false, "blurb": "Enterprise AI platform for building and governing predictive + generative models.", "score": 79.6, "score_breakdown": {"tier": 17.5, "rating": 17.6, "integration": 15.0, "ai": 15.0, "momentum": 14.5, "recognition": 0.0}, "rank": 7, "hidden_gem": false}, {"name": "ThoughtSpot", "category": "BI & Visualization", "tier": "Gold", "booth": "312", "website": "https://www.thoughtspot.com", "hq": "Mountain View, CA", "founded": 2012, "funding_m": 663, "employees": 900, "g2_rating": 4.4, "native_app": true, "ai_focus": true, "partner_of_year": false, "blurb": "Natural-language, AI-driven analytics on top of Snowflake.", "score": 78.9, "score_breakdown": {"tier": 17.5, "rating": 17.6, "integration": 15.0, "ai": 15.0, "momentum": 13.8, "recognition": 0.0}, "rank": 8, "hidden_gem": false}, {"name": "Matillion", "category": "Data Integration", "tier": "Gold", "booth": "120", "website": "https://www.matillion.com", "hq": "Manchester, UK", "founded": 2011, "funding_m": 310, "employees": 600, "g2_rating": 4.4, "native_app": true, "ai_focus": true, "partner_of_year": false, "blurb": "Low-code ETL/ELT and data pipelines optimized for Snowflake.", "score": 77.6, "score_breakdown": {"tier": 17.5, "rating": 17.6, "integration": 15.0, "ai": 15.0, "momentum": 12.5, "recognition": 0.0}, "rank": 9, "hidden_gem": false}, {"name": "Monte Carlo", "category": "Data Observability", "tier": "Gold", "booth": "430", "website": "https://www.montecarlodata.com", "hq": "San Francisco, CA", "founded": 2019, "funding_m": 236, "employees": 350, "g2_rating": 4.5, "native_app": true, "ai_focus": true, "partner_of_year": false, "blurb": "Data + AI observability that catches broken pipelines before users do.", "score": 77.2, "score_breakdown": {"tier": 17.5, "rating": 18.0, "integration": 15.0, "ai": 15.0, "momentum": 11.7, "recognition": 0.0}, "rank": 10, "hidden_gem": false}, {"name": "Immuta", "category": "Data Security", "tier": "Gold", "booth": "436", "website": "https://www.immuta.com", "hq": "Boston, MA", "founded": 2015, "funding_m": 267, "employees": 350, "g2_rating": 4.5, "native_app": true, "ai_focus": false, "partner_of_year": true, "blurb": "Automated data access control and security for Snowflake.", "score": 76.9, "score_breakdown": {"tier": 17.5, "rating": 18.0, "integration": 15.0, "ai": 4.5, "momentum": 11.9, "recognition": 10.0}, "rank": 11, "hidden_gem": false}, {"name": "phData", "category": "Consulting & SI", "tier": "Platinum", "booth": "230", "website": "https://www.phdata.io", "hq": "Minneapolis, MN", "founded": 2014, "funding_m": 2.5, "employees": 700, "g2_rating": 4.6, "native_app": false, "ai_focus": true, "partner_of_year": true, "blurb": "Snowflake-focused services partner; multi-year Partner of the Year.", "score": 76.7, "score_breakdown": {"tier": 21.2, "rating": 18.4, "integration": 5.2, "ai": 15.0, "momentum": 6.8, "recognition": 10.0}, "rank": 12, "hidden_gem": false}, {"name": "Coalesce", "category": "Transformation", "tier": "Gold", "booth": "412", "website": "https://coalesce.io", "hq": "San Francisco, CA", "founded": 2020, "funding_m": 92, "employees": 200, "g2_rating": 4.7, "native_app": true, "ai_focus": true, "partner_of_year": false, "blurb": "Visual, column-aware transformation platform purpose-built for Snowflake.", "score": 76.4, "score_breakdown": {"tier": 17.5, "rating": 18.8, "integration": 15.0, "ai": 15.0, "momentum": 10.1, "recognition": 0.0}, "rank": 13, "hidden_gem": false}, {"name": "Accenture", "category": "Consulting & SI", "tier": "Diamond", "booth": "160", "website": "https://www.accenture.com", "hq": "Dublin, IE", "founded": 1989, "funding_m": null, "employees": 740000, "g2_rating": 4.0, "native_app": false, "ai_focus": true, "partner_of_year": false, "blurb": "Global SI with a dedicated Snowflake AI Data Cloud practice.", "score": 74.8, "score_breakdown": {"tier": 25.0, "rating": 16.0, "integration": 5.2, "ai": 15.0, "momentum": 13.5, "recognition": 0.0}, "rank": 14, "hidden_gem": false}, {"name": "Domo", "category": "BI & Visualization", "tier": "Silver", "booth": "556", "website": "https://www.domo.com", "hq": "American Fork, UT", "founded": 2010, "funding_m": null, "employees": 1000, "g2_rating": 4.3, "native_app": true, "ai_focus": true, "partner_of_year": false, "blurb": "Cloud BI and app platform with native Snowflake write-back.", "score": 74.5, "score_breakdown": {"tier": 13.8, "rating": 17.2, "integration": 15.0, "ai": 15.0, "momentum": 13.5, "recognition": 0.0}, "rank": 15, "hidden_gem": false}, {"name": "Hightouch", "category": "Reverse ETL", "tier": "Silver", "booth": "534", "website": "https://hightouch.com", "hq": "San Francisco, CA", "founded": 2018, "funding_m": 91, "employees": 220, "g2_rating": 4.7, "native_app": true, "ai_focus": true, "partner_of_year": false, "blurb": "Composable CDP and data activation built on the warehouse.", "score": 72.7, "score_breakdown": {"tier": 13.8, "rating": 18.8, "integration": 15.0, "ai": 15.0, "momentum": 10.2, "recognition": 0.0}, "rank": 16, "hidden_gem": true}, {"name": "dbt Labs", "category": "Transformation", "tier": "Platinum", "booth": "210", "website": "https://www.getdbt.com", "hq": "Philadelphia, PA", "founded": 2016, "funding_m": 414, "employees": 600, "g2_rating": 4.6, "native_app": true, "ai_focus": false, "partner_of_year": false, "blurb": "The standard for in-warehouse SQL transformation and analytics engineering.", "score": 72.1, "score_breakdown": {"tier": 21.2, "rating": 18.4, "integration": 15.0, "ai": 4.5, "momentum": 12.9, "recognition": 0.0}, "rank": 17, "hidden_gem": false}, {"name": "Confluent", "category": "Streaming & CDC", "tier": "Platinum", "booth": "140", "website": "https://www.confluent.io", "hq": "Mountain View, CA", "founded": 2014, "funding_m": null, "employees": 3000, "g2_rating": 4.4, "native_app": true, "ai_focus": false, "partner_of_year": false, "blurb": "Data streaming platform (managed Kafka) feeding Snowflake in real time.", "score": 71.8, "score_breakdown": {"tier": 21.2, "rating": 17.6, "integration": 15.0, "ai": 4.5, "momentum": 13.5, "recognition": 0.0}, "rank": 18, "hidden_gem": false}, {"name": "Anomalo", "category": "Data Observability", "tier": "Silver", "booth": "552", "website": "https://www.anomalo.com", "hq": "Palo Alto, CA", "founded": 2018, "funding_m": 82, "employees": 120, "g2_rating": 4.6, "native_app": true, "ai_focus": true, "partner_of_year": false, "blurb": "No-code, ML-based data quality monitoring for Snowflake tables.", "score": 71.7, "score_breakdown": {"tier": 13.8, "rating": 18.4, "integration": 15.0, "ai": 15.0, "momentum": 9.5, "recognition": 0.0}, "rank": 19, "hidden_gem": true}, {"name": "Hakkoda", "category": "Consulting & SI", "tier": "Gold", "booth": "448", "website": "https://hakkoda.io", "hq": "New York, NY", "founded": 2021, "funding_m": null, "employees": 350, "g2_rating": 4.7, "native_app": false, "ai_focus": true, "partner_of_year": false, "blurb": "Snowflake-native data engineering and AI consultancy (an IBM company).", "score": 70.0, "score_breakdown": {"tier": 17.5, "rating": 18.8, "integration": 5.2, "ai": 15.0, "momentum": 13.5, "recognition": 0.0}, "rank": 20, "hidden_gem": false}, {"name": "LiveRamp", "category": "Data Collaboration", "tier": "Gold", "booth": "442", "website": "https://liveramp.com", "hq": "San Francisco, CA", "founded": 2011, "funding_m": null, "employees": 1400, "g2_rating": 4.2, "native_app": true, "ai_focus": false, "partner_of_year": false, "blurb": "Data collaboration and clean rooms powered by Snowflake sharing.", "score": 67.3, "score_breakdown": {"tier": 17.5, "rating": 16.8, "integration": 15.0, "ai": 4.5, "momentum": 13.5, "recognition": 0.0}, "rank": 21, "hidden_gem": false}, {"name": "Atlan", "category": "Governance & Catalog", "tier": "Silver", "booth": "520", "website": "https://atlan.com", "hq": "New York, NY", "founded": 2018, "funding_m": 206, "employees": 400, "g2_rating": 4.6, "native_app": false, "ai_focus": true, "partner_of_year": false, "blurb": "Active metadata and modern data catalog with AI-assisted discovery.", "score": 64.1, "score_breakdown": {"tier": 13.8, "rating": 18.4, "integration": 5.2, "ai": 15.0, "momentum": 11.7, "recognition": 0.0}, "rank": 22, "hidden_gem": true}, {"name": "Hex", "category": "Analytics & Notebooks", "tier": "Silver", "booth": "525", "website": "https://hex.tech", "hq": "San Francisco, CA", "founded": 2019, "funding_m": 95, "employees": 200, "g2_rating": 4.7, "native_app": false, "ai_focus": true, "partner_of_year": false, "blurb": "Collaborative data notebooks with an AI copilot for analysts.", "score": 62.9, "score_breakdown": {"tier": 13.8, "rating": 18.8, "integration": 5.2, "ai": 15.0, "momentum": 10.1, "recognition": 0.0}, "rank": 23, "hidden_gem": true}, {"name": "Census", "category": "Reverse ETL", "tier": "Silver", "booth": "530", "website": "https://www.getcensus.com", "hq": "San Francisco, CA", "founded": 2018, "funding_m": 80, "employees": 150, "g2_rating": 4.6, "native_app": true, "ai_focus": false, "partner_of_year": false, "blurb": "Syncs Snowflake data back into the SaaS tools teams use daily.", "score": 61.3, "score_breakdown": {"tier": 13.8, "rating": 18.4, "integration": 15.0, "ai": 4.5, "momentum": 9.7, "recognition": 0.0}, "rank": 24, "hidden_gem": true}, {"name": "Striim", "category": "Streaming & CDC", "tier": "Silver", "booth": "544", "website": "https://www.striim.com", "hq": "Palo Alto, CA", "founded": 2012, "funding_m": 100, "employees": 250, "g2_rating": 4.3, "native_app": true, "ai_focus": false, "partner_of_year": false, "blurb": "Real-time CDC and streaming integration into Snowflake.", "score": 60.8, "score_breakdown": {"tier": 13.8, "rating": 17.2, "integration": 15.0, "ai": 4.5, "momentum": 10.4, "recognition": 0.0}, "rank": 25, "hidden_gem": false}, {"name": "Collibra", "category": "Governance & Catalog", "tier": "Gold", "booth": "424", "website": "https://www.collibra.com", "hq": "New York, NY", "founded": 2008, "funding_m": 600, "employees": 1200, "g2_rating": 4.2, "native_app": false, "ai_focus": false, "partner_of_year": false, "blurb": "Data intelligence and governance platform for the enterprise.", "score": 58.0, "score_breakdown": {"tier": 17.5, "rating": 16.8, "integration": 5.2, "ai": 4.5, "momentum": 13.9, "recognition": 0.0}, "rank": 26, "hidden_gem": false}, {"name": "Alation", "category": "Governance & Catalog", "tier": "Gold", "booth": "418", "website": "https://www.alation.com", "hq": "Redwood City, CA", "founded": 2012, "funding_m": 340, "employees": 750, "g2_rating": 4.4, "native_app": false, "ai_focus": false, "partner_of_year": false, "blurb": "Enterprise data catalog and governance with deep Snowflake lineage.", "score": 57.7, "score_breakdown": {"tier": 17.5, "rating": 17.6, "integration": 5.2, "ai": 4.5, "momentum": 12.8, "recognition": 0.0}, "rank": 27, "hidden_gem": false}, {"name": "Keboola", "category": "Data Integration", "tier": "Bronze", "booth": "630", "website": "https://www.keboola.com", "hq": "Prague, CZ", "founded": 2008, "funding_m": 40, "employees": 150, "g2_rating": 4.6, "native_app": true, "ai_focus": false, "partner_of_year": false, "blurb": "Self-service data operations platform with Snowflake backend.", "score": 56.7, "score_breakdown": {"tier": 10.0, "rating": 18.4, "integration": 15.0, "ai": 4.5, "momentum": 8.8, "recognition": 0.0}, "rank": 28, "hidden_gem": true}, {"name": "Snowplow", "category": "Behavioral Data", "tier": "Bronze", "booth": "620", "website": "https://snowplow.io", "hq": "London, UK", "founded": 2012, "funding_m": 55, "employees": 150, "g2_rating": 4.4, "native_app": true, "ai_focus": false, "partner_of_year": false, "blurb": "First-party behavioral data pipelines landing in Snowflake.", "score": 56.3, "score_breakdown": {"tier": 10.0, "rating": 17.6, "integration": 15.0, "ai": 4.5, "momentum": 9.2, "recognition": 0.0}, "rank": 29, "hidden_gem": false}, {"name": "Select Star", "category": "Governance & Catalog", "tier": "Bronze", "booth": "625", "website": "https://www.selectstar.com", "hq": "San Francisco, CA", "founded": 2020, "funding_m": 40, "employees": 60, "g2_rating": 4.5, "native_app": false, "ai_focus": true, "partner_of_year": false, "blurb": "Automated data discovery and lineage catalog.", "score": 56.3, "score_breakdown": {"tier": 10.0, "rating": 18.0, "integration": 5.2, "ai": 15.0, "momentum": 8.1, "recognition": 0.0}, "rank": 30, "hidden_gem": true}, {"name": "Cribl", "category": "Data Observability", "tier": "Silver", "booth": "548", "website": "https://cribl.io", "hq": "San Francisco, CA", "founded": 2018, "funding_m": 600, "employees": 800, "g2_rating": 4.6, "native_app": false, "ai_focus": false, "partner_of_year": false, "blurb": "Observability data pipelines that route telemetry into Snowflake.", "score": 55.5, "score_breakdown": {"tier": 13.8, "rating": 18.4, "integration": 5.2, "ai": 4.5, "momentum": 13.6, "recognition": 0.0}, "rank": 31, "hidden_gem": true}, {"name": "Astronomer", "category": "Orchestration", "tier": "Silver", "booth": "540", "website": "https://www.astronomer.io", "hq": "New York, NY", "founded": 2018, "funding_m": 393, "employees": 400, "g2_rating": 4.4, "native_app": false, "ai_focus": false, "partner_of_year": false, "blurb": "Managed Apache Airflow for orchestrating Snowflake pipelines.", "score": 53.6, "score_breakdown": {"tier": 13.8, "rating": 17.6, "integration": 5.2, "ai": 4.5, "momentum": 12.5, "recognition": 0.0}, "rank": 32, "hidden_gem": false}, {"name": "SqlDBM", "category": "Data Modeling", "tier": "Bronze", "booth": "635", "website": "https://sqldbm.com", "hq": "San Francisco, CA", "founded": 2017, "funding_m": null, "employees": 80, "g2_rating": 4.6, "native_app": false, "ai_focus": false, "partner_of_year": false, "blurb": "Cloud data modeling tool with deep Snowflake DDL support.", "score": 51.6, "score_breakdown": {"tier": 10.0, "rating": 18.4, "integration": 5.2, "ai": 4.5, "momentum": 13.5, "recognition": 0.0}, "rank": 33, "hidden_gem": true}, {"name": "Satori", "category": "Data Security", "tier": "Bronze", "booth": "615", "website": "https://satoricyber.com", "hq": "Tel Aviv, IL", "founded": 2019, "funding_m": 100, "employees": 120, "g2_rating": 4.6, "native_app": false, "ai_focus": false, "partner_of_year": false, "blurb": "Data security platform with dynamic masking and access policies.", "score": 47.9, "score_breakdown": {"tier": 10.0, "rating": 18.4, "integration": 5.2, "ai": 4.5, "momentum": 9.8, "recognition": 0.0}, "rank": 34, "hidden_gem": true}, {"name": "Cube", "category": "Semantic Layer", "tier": "Bronze", "booth": "610", "website": "https://cube.dev", "hq": "San Francisco, CA", "founded": 2019, "funding_m": 48, "employees": 90, "g2_rating": 4.5, "native_app": false, "ai_focus": false, "partner_of_year": false, "blurb": "Universal semantic layer for consistent metrics across tools.", "score": 46.4, "score_breakdown": {"tier": 10.0, "rating": 18.0, "integration": 5.2, "ai": 4.5, "momentum": 8.6, "recognition": 0.0}, "rank": 35, "hidden_gem": true}]};
+const fmt = n => (n===null||n===undefined)?"—":n;
+
+// subhead
+document.getElementById('subhead').textContent =
+  `${DATA.vendors.length} partner vendors · source: ${DATA.source} · generated ${DATA.generated}`;
+
+// KPIs
+document.getElementById('kpis').innerHTML = DATA.kpis.map(k=>
+  `<div class="kpi"><div class="v">${k.value}</div><div class="l">${k.label}</div><div class="s">${k.sub}</div></div>`).join('');
+
+// Must-see cards
+document.getElementById('mustsee').innerHTML = DATA.must_see.map(v=>{
+  const badges = [
+    `<span class="badge b-tier">${v.tier}</span>`,
+    v.partner_of_year?`<span class="badge b-poy">Partner of Year</span>`:'',
+    v.ai_focus?`<span class="badge b-ai">AI</span>`:'',
+    v.native_app?`<span class="badge b-native">Native App</span>`:''
+  ].join('');
+  return `<div class="ms"><div class="rk">${v.rank}</div>
+    <div class="nm">${v.name}</div><div class="ct">${v.category}</div>
+    <div class="bl">${v.blurb||''}</div>
+    <div>${badges}</div>
+    <div class="sc"><b>${v.score}</b><span>/ 100 · booth ${fmt(v.booth)}</span></div></div>`;
+}).join('');
+
+// Model explanation
+const w = DATA.weights;
+document.getElementById('model').innerHTML =
+  `Each vendor earns a <b>Check-Out Score (0–100)</b> by combining six normalized signals:<br><br>` +
+  `• <code>Sponsorship tier</code> (${w.tier} pts) — investment / scale at the event<br>` +
+  `• <code>Product rating</code> (${w.rating} pts) — G2-style review score ÷ 5<br>` +
+  `• <code>Snowflake integration</code> (${w.integration} pts) — full points for a Native App<br>` +
+  `• <code>AI / ML focus</code> (${w.ai} pts) — the dominant Summit theme<br>` +
+  `• <code>Company momentum</code> (${w.momentum} pts) — log-scaled funding + headcount<br>` +
+  `• <code>Partner-of-the-Year</code> (${w.recognition} pts) — Snowflake recognition<br><br>` +
+  `Weights sum to 100. "💎 Hidden gems" are vendors rated ≥4.5 sitting at Silver/Bronze tier — strong product, smaller booth, easy to miss.`;
+
+// Charts
+const C = {grid:'#243352', tick:'#8da2c8'};
+const baseOpts = {plugins:{legend:{labels:{color:C.tick}}},
+  scales:{x:{ticks:{color:C.tick},grid:{color:C.grid}},y:{ticks:{color:C.tick},grid:{color:C.grid}}}};
+
+new Chart(document.getElementById('topChart'),{type:'bar',
+  data:{labels:DATA.top10.map(v=>v.name),
+    datasets:[{label:'Check-Out Score',data:DATA.top10.map(v=>v.score),
+      backgroundColor:'#29b5e8'}]},
+  options:{...baseOpts,indexAxis:'y',plugins:{legend:{display:false}},
+    scales:{x:{min:0,max:100,ticks:{color:C.tick},grid:{color:C.grid}},y:{ticks:{color:C.tick},grid:{display:false}}}}});
+
+new Chart(document.getElementById('tierChart'),{type:'doughnut',
+  data:{labels:Object.keys(DATA.by_tier),
+    datasets:[{data:Object.values(DATA.by_tier),
+      backgroundColor:['#bfe9ff','#7fb8e8','#ffd778','#cdd6e6','#d8a47a','#5b6a85']}]},
+  options:{plugins:{legend:{position:'right',labels:{color:C.tick}}}}});
+
+new Chart(document.getElementById('catChart'),{type:'bar',
+  data:{labels:Object.keys(DATA.by_cat),
+    datasets:[{label:'Vendors',data:Object.values(DATA.by_cat),backgroundColor:'#11567f'}]},
+  options:{...baseOpts,plugins:{legend:{display:false}}}});
+
+const cs = DATA.cat_scores;
+new Chart(document.getElementById('catScoreChart'),{type:'bar',
+  data:{labels:Object.keys(cs),datasets:[{label:'Avg score',data:Object.values(cs),backgroundColor:'#a78bfa'}]},
+  options:{...baseOpts,plugins:{legend:{display:false}},
+    scales:{x:{ticks:{color:C.tick},grid:{display:false}},y:{min:0,max:100,ticks:{color:C.tick},grid:{color:C.grid}}}}});
+
+// Table
+const tbody = document.querySelector('#vtable tbody');
+const catSel = document.getElementById('catFilter'), tierSel=document.getElementById('tierFilter');
+[...new Set(DATA.vendors.map(v=>v.category))].sort().forEach(c=>catSel.add(new Option(c,c)));
+[...new Set(DATA.vendors.map(v=>v.tier))].forEach(t=>tierSel.add(new Option(t,t)));
+let sortK='rank', sortAsc=true, rows=[...DATA.vendors];
+const maxScore = Math.max(...DATA.vendors.map(v=>v.score));
+
+function draw(){
+  const q=document.getElementById('search').value.toLowerCase();
+  const cf=catSel.value, tf=tierSel.value;
+  let r=rows.filter(v=>(!q||v.name.toLowerCase().includes(q)||v.category.toLowerCase().includes(q))
+    &&(!cf||v.category===cf)&&(!tf||v.tier===tf));
+  r.sort((a,b)=>{let x=a[sortK],y=b[sortK];
+    if(typeof x==='string'){x=x.toLowerCase();y=(y||'').toLowerCase();}
+    return (x>y?1:x<y?-1:0)*(sortAsc?1:-1);});
+  tbody.innerHTML=r.map(v=>{
+    const wpx=Math.round((v.score/maxScore)*70)+10;
+    return `<tr class="${v.hidden_gem?'gem-row':''}">
+      <td>${v.rank}</td>
+      <td class="name"><a href="${v.website}" target="_blank" rel="noopener">${v.name}</a></td>
+      <td>${v.category}</td>
+      <td><span class="pill tier-${v.tier}">${v.tier}</span></td>
+      <td>${fmt(v.booth)}</td>
+      <td>${fmt(v.g2_rating)}</td>
+      <td><span class="scorebar" style="width:${wpx}px"></span><b>${v.score}</b></td>
+    </tr>`;}).join('');
+}
+document.querySelectorAll('#vtable th').forEach(th=>th.onclick=()=>{
+  const k=th.dataset.k; if(sortK===k)sortAsc=!sortAsc;else{sortK=k;sortAsc=(k==='rank'||k==='name'||k==='category');}
+  draw();});
+['input','change'].forEach(e=>{document.getElementById('search').addEventListener(e,draw);
+  catSel.addEventListener(e,draw);tierSel.addEventListener(e,draw);});
+draw();
+
+document.getElementById('note').innerHTML =
+  `<b>Data note:</b> this dashboard was seeded with real Snowflake-ecosystem partner companies, but per-vendor attributes ` +
+  `(tier, booth, funding, rating) are approximate starter values. Replace <code>vendors.json</code> with your authoritative ` +
+  `partner-vendor export (same field names) and re-run <code>python build.py</code> to regenerate. Scoring is a heuristic ` +
+  `aid for prioritizing booths — not an endorsement.`;
+</script>
+</body>
+</html>
