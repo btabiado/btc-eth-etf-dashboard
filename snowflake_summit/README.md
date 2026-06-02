@@ -1,69 +1,56 @@
-# Snowflake Summit — Partner Vendor Dashboard
+# Snowflake Summit 2026 — Partner Scouting Dashboard
 
-A self-contained dashboard that turns a list of Snowflake Summit partner vendors
-into KPIs, charts, and a ranked **"Check-Out Score"** so you can quickly decide
-which booths are worth your time.
+A self-contained dashboard built from **Bryan's `Snowflake_Summit_2026_Master_Partner_Scouting.xlsx`** —
+197 partner vendors transcribed from the Summit partner-booth directory and scored across five
+dimensions. It turns the workbook into KPIs, charts, and a ranked **Must-See** list so you can decide
+which booths to hit.
 
 ## Quick start
 
 ```bash
 cd snowflake_summit
-python3 build.py            # reads vendors.json -> writes dashboard.html
-open dashboard.html         # (macOS) or just double-click it
+python3 build.py          # reads vendors.json -> writes dashboard.html
+open dashboard.html       # (macOS) or just double-click it
 ```
 
-`dashboard.html` is fully self-contained — all data is inlined at build time.
-The only runtime dependency is Chart.js, pulled from a CDN, so the charts need
-an internet connection when you open the page.
+`dashboard.html` is fully self-contained (data inlined at build time). Charts load Chart.js from a CDN,
+so viewing needs an internet connection. A **⬇ Download source spreadsheet** button in the header serves
+the bundled `.xlsx`.
 
-## Use your own vendor file
+## What's inside
 
-The seeded `vendors.json` is **illustrative starter data**: the companies are
-real Snowflake-ecosystem partners, but per-vendor attributes (tier, booth,
-funding, rating) are approximate. Swap in your authoritative export and rebuild:
+- **`vendors.json`** — the 197-partner Master Directory (the dashboard's data source).
+- **`build.py`** — aggregates the data + renders `dashboard.html`.
+- **`dashboard.html`** — the generated dashboard.
+- **`Snowflake_Summit_2026_Master_Partner_Scouting.xlsx`** — the source workbook (Master Directory),
+  linked for download from the page.
 
-```bash
-python3 build.py path/to/your_vendors.json
-```
+### Dashboard sections
+- **6 KPIs** — total partners, Must-See (Tier A) count, Priority (A+B), avg Overall score, avg AI score, public-company count.
+- **⭐ Must-See** — the 14 Tier-A partners, ranked by Overall Score (Sigma, Atlan, Hightouch, dbt, Fivetran, …).
+- **💎 Hidden Gems** — Overall ≥ 7 but not Tier A.
+- **🤝 Best Bryan-Fit** — top career/networking-fit partners.
+- **Charts** — Top 15 by Overall, Priority-Tier mix, Partners by Category, and a radar of the average
+  score profile (Tier A vs all).
+- **Sortable / filterable table** of all 197 partners with every score column.
 
-Your file should be JSON shaped like `vendors.json` — either a top-level
-`{"vendors": [...]}` object or a bare list. Each vendor supports these fields
-(missing ones degrade gracefully):
+## The scoring (0–10, Bryan's directional ratings)
 
-| field | type | used for |
-|-------|------|----------|
-| `name` | string | label |
-| `category` | string | category charts / filters |
-| `tier` | Diamond/Platinum/Gold/Silver/Bronze/Exhibitor | tier chart + 25% of score |
-| `booth` | string | display |
-| `website` | url | link |
-| `g2_rating` | 0–5 | 20% of score |
-| `native_app` | bool | 15% of score |
-| `ai_focus` | bool | 15% of score |
-| `funding_m` | number or null | momentum (15% of score) |
-| `employees` | number | momentum |
-| `partner_of_year` | bool | 10% of score |
-| `blurb` | string | card description |
+| dimension | meaning |
+|-----------|---------|
+| `snowflake_score` | Snowflake ecosystem relevance |
+| `ai_score` | AI / ML relevance (the Summit's dominant theme) |
+| `retail_score` | Retail / customer-analytics relevance |
+| `ipo_score` | IPO / upside potential |
+| `bryan_score` | Bryan career / networking fit |
+| `overall_score` | blended overall priority |
+| `tier` | Priority **A** (must-see) / **B** / **C** |
 
-If you have a CSV/XLSX instead of JSON, convert it first (e.g. with `pandas`)
-and keep these column names.
+> **Caveat (from the workbook):** first-pass scouting database. Public market caps are researched;
+> many private funding/valuation entries still need validation (Crunchbase/PitchBook/company disclosures).
 
-## The Check-Out Score (0–100)
+## Updating the data
 
-A transparent weighted blend of six normalized signals — see the exact weights
-in `build.py` (`WEIGHTS`) and the in-page "How the Check-Out Score works" panel:
-
-- **Sponsorship tier** (25) — how much the vendor invested in the event
-- **Product rating** (20) — G2-style review score ÷ 5
-- **Snowflake integration** (15) — full points for a Native App
-- **AI / ML focus** (15) — the dominant Summit theme
-- **Company momentum** (15) — log-scaled funding + headcount
-- **Partner of the Year** (10) — Snowflake recognition
-
-The dashboard highlights the **top 6 "Must-See" vendors** by score and flags
-**💎 hidden gems** — vendors rated ≥4.5 sitting at a smaller (Silver/Bronze)
-booth that are easy to walk past.
-
-Tune the model by editing `WEIGHTS` and `TIER_SCORE` in `build.py`, then rerun.
-
-> The score is a prioritization heuristic, not an endorsement.
+Edit `vendors.json` (or replace it with a fresh export using the same field names) and re-run
+`python build.py`. To regenerate the downloadable spreadsheet from the JSON, the builder logic for that
+lives alongside the parse step; the simplest path is to edit `vendors.json` as the source of truth.
