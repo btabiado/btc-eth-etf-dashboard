@@ -563,6 +563,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .toolsheet-item:last-child{border-bottom:none}
     .toolsheet-item:active{background:var(--panel2)}
   }
+  /* ---------- P1 · charts ---------- */
+  @media (max-width:640px){
+    /* Let the taller mobile aspect-ratios render fully — the global 300px canvas
+       cap (and valChart's inline 380px) would otherwise clip the plot. */
+    #topChart,#nicheChart,#profChart,#valChart{max-height:none!important}
+  }
 </style>
 </head>
 <body>
@@ -623,14 +629,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <div class="cards" id="mustsee"></div>
 
   <div class="grid" style="margin-top:22px">
-    <div class="panel"><h4>Top 15 by Overall Score</h4><canvas id="topChart"></canvas></div>
+    <div class="panel"><h4>Top <span class="barNum">15</span> by Overall Score</h4><canvas id="topChart"></canvas></div>
     <div class="panel"><h4>Priority Tier mix</h4><canvas id="tierChart"></canvas></div>
   </div>
   <div class="grid">
     <div class="panel"><h4>Partners by Niche</h4><canvas id="nicheChart"></canvas></div>
     <div class="panel"><h4>Avg score profile — Tier A vs all</h4><canvas id="profChart"></canvas></div>
   </div>
-  <div class="panel" style="margin-bottom:16px"><h4>💰 Top 15 by Valuation <span class="hint" style="font-weight:400;color:var(--muted)">— parsed from reported valuation / market cap; hover for detail</span></h4><canvas id="valChart" style="max-height:380px"></canvas></div>
+  <div class="panel" style="margin-bottom:16px"><h4>💰 Top <span class="barNum">15</span> by Valuation <span class="hint" style="font-weight:400;color:var(--muted)">— parsed from reported valuation / market cap; hover for detail</span></h4><canvas id="valChart" style="max-height:380px"></canvas></div>
 
   <h3 class="sec">💎 Hidden Gems <span class="hint">— Overall ≥ 7 but not Tier A</span></h3>
   <div class="cards" id="gems"></div>
@@ -847,6 +853,12 @@ document.getElementById('bestfit').innerHTML = DATA.best_fit.map(card).join('');
 
 const C={grid:'#243352',tick:'#8da2c8'};
 if(window.Chart){Chart.defaults.font.family='-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';Chart.defaults.color=C.tick;}
+// Phones: fewer bars + a taller plot + bigger ticks so the bar labels stop
+// colliding. Desktop keeps the default 15 bars / aspectRatio 2 (unchanged).
+var IS_MOBILE=!!(window.matchMedia&&window.matchMedia('(max-width:640px)').matches);
+var BARN=IS_MOBILE?10:15;
+// Keep the "Top N" chart headings honest when we trim to 10 bars on phones.
+if(IS_MOBILE) document.querySelectorAll('.barNum').forEach(function(e){e.textContent=BARN;});
 const tierColor=t=>({A:'#34d399',B:'#fbbf24',C:'#60a5fa',D:'#3b82f6'})[t]||'#60a5fa';
 // Inline plugin: print the value on each bar / doughnut slice (numbers on charts).
 const valueLabels={id:'valueLabels',afterDatasetsDraw(chart){
@@ -863,40 +875,46 @@ const valueLabels={id:'valueLabels',afterDatasetsDraw(chart){
   ctx.restore();
 }};
 
+var topData=DATA.top15.slice(0,BARN);
 new Chart(document.getElementById('topChart'),{type:'bar',plugins:[valueLabels],
-  data:{labels:DATA.top15.map(v=>v.name),
-    datasets:[{data:DATA.top15.map(v=>v.overall_score),backgroundColor:'#29b5e8',borderRadius:4}]},
-  options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{afterLabel:c=>'Tier '+DATA.top15[c.dataIndex].tier}}},
-    scales:{x:{min:0,max:10,ticks:{color:C.tick},grid:{color:C.grid}},y:{ticks:{color:C.tick,font:{size:11}},grid:{display:false}}}}});
+  data:{labels:topData.map(v=>v.name),
+    datasets:[{data:topData.map(v=>v.overall_score),backgroundColor:'#29b5e8',borderRadius:4}]},
+  options:{indexAxis:'y',maintainAspectRatio:true,aspectRatio:IS_MOBILE?0.92:2,plugins:{legend:{display:false},tooltip:{callbacks:{afterLabel:c=>'Tier '+topData[c.dataIndex].tier}}},
+    scales:{x:{min:0,max:10,ticks:{color:C.tick},grid:{color:C.grid}},y:{ticks:{color:C.tick,font:{size:IS_MOBILE?12:11}},grid:{display:false}}}}});
 
 new Chart(document.getElementById('tierChart'),{type:'doughnut',plugins:[valueLabels],
   data:{labels:Object.keys(DATA.by_tier).map(t=>'Tier '+t),
     datasets:[{data:Object.values(DATA.by_tier),backgroundColor:Object.keys(DATA.by_tier).map(tierColor)}]},
   options:{plugins:{legend:{position:'right',labels:{color:C.tick}}}}});
 
-const niches=Object.entries(DATA.by_niche);
+var niches=Object.entries(DATA.by_niche);
+if(IS_MOBILE) niches=niches.slice().sort((a,b)=>b[1]-a[1]).slice(0,BARN);
 new Chart(document.getElementById('nicheChart'),{type:'bar',plugins:[valueLabels],
   data:{labels:niches.map(c=>c[0]),datasets:[{data:niches.map(c=>c[1]),backgroundColor:'#29b5e8'}]},
-  options:{indexAxis:'y',plugins:{legend:{display:false}},onClick:(e,els)=>{if(els.length){nicheSel.value=niches[els[0].index][0];draw();document.getElementById('vtable').scrollIntoView({behavior:'smooth'});}},
-    scales:{x:{ticks:{color:C.tick},grid:{color:C.grid}},y:{ticks:{color:C.tick,font:{size:10.5}},grid:{display:false}}}}});
+  options:{indexAxis:'y',maintainAspectRatio:true,aspectRatio:IS_MOBILE?0.92:2,plugins:{legend:{display:false}},onClick:(e,els)=>{if(els.length){nicheSel.value=niches[els[0].index][0];draw();document.getElementById('vtable').scrollIntoView({behavior:'smooth'});}},
+    scales:{x:{ticks:{color:C.tick},grid:{color:C.grid}},y:{ticks:{color:C.tick,font:{size:IS_MOBILE?11.5:10.5}},grid:{display:false}}}}});
 
+var profOpts={plugins:{legend:{labels:{color:C.tick}}},
+    scales:{r:{min:0,max:10,angleLines:{color:C.grid},grid:{color:C.grid},pointLabels:{color:C.tick,font:{size:IS_MOBILE?9.5:11}},ticks:{display:false}}}};
+// Phones: make the radar a square that fits the column, with padding so the
+// point labels (Bryan/Snow/AI/Retail/IPO) don't clip at the edges.
+if(IS_MOBILE){profOpts.maintainAspectRatio=true;profOpts.aspectRatio=1;profOpts.layout={padding:10};}
 new Chart(document.getElementById('profChart'),{type:'radar',
   data:{labels:DATA.score_labels,datasets:[
     {label:'Tier A',data:DATA.profile_a,borderColor:'#34d399',backgroundColor:'rgba(52,211,153,.15)',pointBackgroundColor:'#34d399'},
     {label:'All partners',data:DATA.profile_all,borderColor:'#29b5e8',backgroundColor:'rgba(41,181,232,.12)',pointBackgroundColor:'#29b5e8'}]},
-  options:{plugins:{legend:{labels:{color:C.tick}}},
-    scales:{r:{min:0,max:10,angleLines:{color:C.grid},grid:{color:C.grid},pointLabels:{color:C.tick,font:{size:11}},ticks:{display:false}}}}});
+  options:profOpts});
 
 // Top valuations — parse the $ figures from valuation/market_cap and chart the top 15.
 (function(){
   var cv=document.getElementById('valChart'); if(!cv) return;
   function pv(s){if(!s)return null;var m=String(s).match(/\$\s*([\d.]+)\s*([BMT])/i);if(!m)return null;var n=parseFloat(m[1]);var u=m[2].toUpperCase();return u==='T'?n*1000000:u==='B'?n*1000:n;}
   function fb(n){return n>=1000000?('$'+(n/1000000).toFixed(n%1000000?2:0)+'T'):n>=1000?('$'+(n/1000).toFixed(n%1000?1:0)+'B'):('$'+Math.round(n)+'M');}
-  var rows=(DATA.vendors||[]).map(function(v){return {name:v.name,tier:v.tier,num:pv(v.market_cap),raw:v.market_cap};}).filter(function(r){return r.num;}).sort(function(a,b){return b.num-a.num;}).slice(0,15);
+  var rows=(DATA.vendors||[]).map(function(v){return {name:v.name,tier:v.tier,num:pv(v.market_cap),raw:v.market_cap};}).filter(function(r){return r.num;}).sort(function(a,b){return b.num-a.num;}).slice(0,BARN);
   if(!rows.length) return;
   new Chart(cv,{type:'bar',
     data:{labels:rows.map(function(r){return r.name;}),datasets:[{data:rows.map(function(r){return r.num;}),backgroundColor:rows.map(function(r){return tierColor(r.tier);})}]},
-    options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return fb(c.raw)+(rows[c.dataIndex].raw?(' · '+rows[c.dataIndex].raw):'');}}}},
+    options:{indexAxis:'y',maintainAspectRatio:true,aspectRatio:IS_MOBILE?0.95:2,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return fb(c.raw)+(rows[c.dataIndex].raw?(' · '+rows[c.dataIndex].raw):'');}}}},
       scales:{x:{ticks:{color:C.tick,callback:function(v){return fb(v);}},grid:{color:C.grid}},y:{ticks:{color:C.tick,font:{size:11}},grid:{display:false}}}},
     plugins:[{id:'vlab',afterDatasetsDraw:function(ch){var ctx=ch.ctx,a=ch.chartArea;ctx.save();ctx.font='700 11px -apple-system,BlinkMacSystemFont,sans-serif';ctx.textBaseline='middle';ch.getDatasetMeta(0).data.forEach(function(el,i){var t=fb(rows[i].num),w=ctx.measureText(t).width;if(el.x+6+w<=a.right){ctx.fillStyle='#e8eeff';ctx.textAlign='left';ctx.fillText(t,el.x+6,el.y);}else{ctx.fillStyle='#06121f';ctx.textAlign='right';ctx.fillText(t,el.x-6,el.y);}});ctx.restore();}}]
   });
