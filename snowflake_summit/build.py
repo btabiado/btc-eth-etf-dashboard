@@ -613,7 +613,8 @@ draw();
 document.getElementById('note').innerHTML =
   `<b>Scoring:</b> all scores are ${DATA.meta.owner||'the owner'}'s directional 0–10 ratings from the scouting workbook — `+
   `Snowflake relevance, AI relevance, retail/customer-analytics relevance, IPO/upside, and Bryan career/networking fit — `+
-  `blended into an <b>Overall Score</b> and a <b>Priority Tier</b> (A = must-see). `+
+  `blended into an <b>Overall Score</b> and a <b>Priority Tier</b> — tier is a scouting-priority call (A = must-see), editorial rather than a strict score cutoff. `+
+  `Most high-priority vendors carry researched scores; some lower-priority and consulting entries share directional / template values. `+
   `<b>Niche</b> is a broad value-taxonomy label (Agents, Agent Platform, ETL, Dashboard, API, Security, Cost Savings, Governance, Observability, Database, Customer Data, Consulting, …) rolled up from each vendor's category — searchable and filterable above. `+
   `<b>Caveat:</b> ${DATA.meta.caveat||''} `+
   `Regenerate after editing <code>vendors.json</code> with <code>python build.py</code>.`;
