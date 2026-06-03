@@ -273,6 +273,17 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   header{padding:24px 28px 16px;border-bottom:1px solid var(--border);background:linear-gradient(120deg,#0e1730,#10243f)}
   .brand{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
   .navbtns{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+  .infobtn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:9px;padding:7px 11px;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap}
+  .infobtn:hover,.infobtn[aria-expanded=true]{border-color:var(--accent);color:#dff3ff}
+  .scorepop{position:fixed;top:72px;right:18px;z-index:240;width:362px;max-width:calc(100vw - 32px);background:linear-gradient(165deg,#15233f,#0f1830);border:1px solid var(--accent2);border-radius:14px;box-shadow:0 22px 60px rgba(0,0,0,.6);padding:16px 18px 14px;color:var(--text)}
+  .scorepop[hidden]{display:none}
+  .scorepop .x{position:absolute;top:8px;right:12px;background:none;border:none;color:var(--muted);font-size:20px;line-height:1;cursor:pointer}
+  .scorepop .x:hover{color:var(--text)}
+  .scorepop h3{margin:0 0 8px;font-size:14.5px}
+  .scorepop p{margin:8px 0;font-size:12px;color:var(--muted);line-height:1.55}
+  .scorepop ul{margin:8px 0;padding-left:17px}
+  .scorepop li{margin:5px 0;font-size:12px;color:#cfddf4;line-height:1.5}
+  .scorepop b{color:var(--text)}
   .logo{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#29b5e8,#1b7fb8);display:flex;align-items:center;justify-content:center;font-weight:800;color:#06121f}
   h1{font-size:20px;margin:0;letter-spacing:.01em}
   .sub{color:var(--muted);font-size:12.5px;margin-top:4px}
@@ -405,7 +416,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .planregion{position:absolute;box-sizing:border-box;border-radius:5px;overflow:hidden}
   .planzone{border:1px dashed #2a3a5c;padding:11px 2px 3px}
   .planzone>.zl{position:absolute;top:1px;left:0;right:0;text-align:center;font-size:8px;font-weight:800;color:var(--accent);letter-spacing:.02em}
-  .planzone .dots{display:flex;flex-wrap:wrap;gap:2px;justify-content:center;align-content:flex-start;height:100%;overflow:hidden}
+  .planzone .dots{display:flex;flex-wrap:wrap;gap:2px;justify-content:center;align-content:flex-start;height:100%;overflow:visible}
   .planbooth{width:11px;height:11px;border-radius:3px;cursor:pointer;border:1px solid rgba(0,0,0,.35)}
   .planbooth.must{width:13px;height:13px;border-radius:50%;box-shadow:0 0 0 1.5px #0b1020,0 0 0 3px var(--A)}
   .planbooth.space{cursor:default;border-radius:50%}
@@ -499,6 +510,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <div class="sub" id="subhead"></div>
     </div>
     <div class="navbtns">
+      <button type="button" class="infobtn no-print" id="scoreInfoBtn" aria-haspopup="dialog" aria-expanded="false" aria-controls="scorePop" title="How the scores are calculated">ⓘ Scoring</button>
       <a class="dl" href="?view=news" target="_blank" rel="noopener" title="Opens the partner news feed in its own window">📰 Summit News ↗</a>
       <a class="dl" href="?view=mq" target="_blank" rel="noopener" title="Opens the Magic Quadrant in its own window">📊 Magic Quadrant ↗</a>
       <a class="dl" href="?view=map" target="_blank" rel="noopener" title="Opens the interactive Basecamp floor map in its own window">🗺 Floor Map ↗</a>
@@ -508,6 +520,20 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     </div>
   </div>
 </header>
+<div class="scorepop no-print" id="scorePop" role="dialog" aria-modal="false" aria-label="How the scores are calculated" hidden>
+  <button class="x" type="button" id="scorePopX" aria-label="Close">&times;</button>
+  <h3>How the scores work</h3>
+  <p>Every partner is rated <b>0–10</b> on five directional, scouting-lens dimensions, then blended into an Overall:</p>
+  <ul>
+    <li><b>Snowflake</b> — relevance to the Snowflake ecosystem (native apps, integrations, Summit presence, joint go-to-market).</li>
+    <li><b>AI</b> — strength &amp; relevance of the vendor's AI / ML / agent story.</li>
+    <li><b>Retail / Customer</b> — fit for retail &amp; customer-analytics use cases (the scouting focus).</li>
+    <li><b>IPO / Upside</b> — growth trajectory, funding / valuation momentum, and exit / investment upside.</li>
+    <li><b>Bryan-Fit</b> — career &amp; networking fit for Bryan specifically (directional — to confirm).</li>
+    <li><b>Overall</b> — the simple mean (average) of the five scores.</li>
+  </ul>
+  <p>Scores are Bryan's directional ratings from the scouting workbook (some researched, some template / estimated). <b>Tier</b> is a curated priority call (A = must-see) that uses Overall as a guideline (≈ 7.5+ / 6+ / below), set editorially. Funding &amp; valuation figures were enriched via AI web research — verify before relying.</p>
+</div>
 <div class="wrap" id="dashwrap">
   <div class="kpis" id="kpis"></div>
 
@@ -987,6 +1013,19 @@ draw();
   sel.addEventListener('change',()=>render(sel.value==='All Partners'?ALL:(byLabel[sel.value]||ALL)));
   back.addEventListener('click',()=>render(ALL));
   render(ALL);
+})();
+
+// Scoring-info popover — the upper-right "ⓘ Scoring" link defines each score component.
+(function(){
+  var btn=document.getElementById('scoreInfoBtn'), pop=document.getElementById('scorePop');
+  if(!btn||!pop) return;
+  var x=document.getElementById('scorePopX');
+  function open(){pop.hidden=false;btn.setAttribute('aria-expanded','true');if(x)x.focus();}
+  function close(){pop.hidden=true;btn.setAttribute('aria-expanded','false');}
+  btn.addEventListener('click',function(e){e.stopPropagation();if(pop.hidden)open();else close();});
+  if(x) x.addEventListener('click',close);
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!pop.hidden)close();});
+  document.addEventListener('click',function(e){if(!pop.hidden&&!pop.contains(e.target)&&e.target!==btn)close();});
 })();
 
 // ----- Interactive Basecamp floor map (?view=map): spatial floor-plan + zone columns -----
