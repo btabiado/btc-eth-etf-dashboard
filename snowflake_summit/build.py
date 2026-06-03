@@ -288,6 +288,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
        border-radius:11px;padding:12px 14px 12px 38px;font-size:14px}
   .topbar input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(41,181,232,.18)}
   .topbar .hit{font-size:12px;color:var(--muted);white-space:nowrap}
+  /* Search name-lookup typeahead dropdown */
+  .sugbox{position:absolute;top:calc(100% + 5px);left:0;right:0;background:var(--panel2);border:1px solid var(--border);border-radius:9px;z-index:60;max-height:300px;overflow:auto;display:none;box-shadow:0 10px 28px rgba(0,0,0,.45)}
+  .sugbox.on{display:block}
+  .sug{padding:8px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+  .sug:last-child{border-bottom:none}
+  .sug:hover,.sug.act{background:var(--panel)}
+  .sug .nm{font-weight:600;font-size:13px}
+  .sug .meta{color:var(--muted);font-size:11px;white-space:nowrap}
   .controls{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:11px;align-items:center}
   .controls input,.controls select{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 10px;font-size:12.5px}
   /* In-table filter row: a dropdown aligned under each filterable column header.
@@ -473,6 +481,41 @@ document.querySelectorAll('#vtable thead tr:first-child th').forEach(th=>th.oncl
   const k=th.dataset.k;if(!k)return;if(sortK===k)sortAsc=!sortAsc;else{sortK=k;sortAsc=(k==='rank'||k==='name'||k==='category'||k==='tier'||k==='niche');}draw();});
 ['input','change'].forEach(e=>{document.getElementById('search').addEventListener(e,draw);nicheSel.addEventListener(e,draw);catSel.addEventListener(e,draw);tierSel.addEventListener(e,draw);typeSel.addEventListener(e,draw);});
 draw();
+
+// Name look-up typeahead on the search box — suggests matching vendor names as
+// you type; click / Enter jumps the table to that vendor. (draw() still filters
+// the table live; this is the by-name lookup on top.)
+(function(){
+  var inp=document.getElementById('search'); if(!inp) return;
+  var wrap=inp.closest('.searchwrap')||inp.parentNode;
+  var box=document.createElement('div'); box.className='sugbox'; wrap.appendChild(box);
+  var items=[], act=-1;
+  function close(){box.classList.remove('on');box.innerHTML='';items=[];act=-1;}
+  function pick(v){var set=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;set.call(inp,v.name);inp.dispatchEvent(new Event('input',{bubbles:true}));close();var t=document.getElementById('vtable');if(t)t.scrollIntoView({behavior:'smooth',block:'start'});}
+  function hi(){[].forEach.call(box.querySelectorAll('.sug[data-i]'),function(el){var on=(+el.dataset.i===act);el.classList.toggle('act',on);if(on)el.scrollIntoView({block:'nearest'});});}
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function build(){
+    var q=inp.value.trim().toLowerCase();
+    if(!q){close();return;}
+    var m=DATA.vendors.filter(function(v){return (v.name||'').toLowerCase().includes(q);});
+    m.sort(function(a,b){var ai=(a.name||'').toLowerCase().indexOf(q),bi=(b.name||'').toLowerCase().indexOf(q);if(ai!==bi)return ai-bi;return (b.overall_score||0)-(a.overall_score||0);});
+    items=m.slice(0,8); act=-1;
+    if(!items.length){box.innerHTML='<div class="sug" style="cursor:default;color:var(--muted)">No vendor matches</div>';box.classList.add('on');return;}
+    box.innerHTML=items.map(function(v,i){return '<div class="sug" data-i="'+i+'"><span class="nm">'+esc(v.name)+' <span class="tag '+tierClass(v.tier)+'">'+esc(v.tier)+'</span></span><span class="meta">'+esc(v.niche)+' &middot; '+(v.overall_score!=null?v.overall_score:'')+'</span></div>';}).join('');
+    box.classList.add('on');
+    [].forEach.call(box.querySelectorAll('.sug[data-i]'),function(el){el.addEventListener('mousedown',function(e){e.preventDefault();pick(items[+el.dataset.i]);});});
+  }
+  inp.addEventListener('input',build);
+  inp.addEventListener('focus',function(){if(inp.value.trim())build();});
+  inp.addEventListener('keydown',function(e){
+    if(!box.classList.contains('on'))return;
+    if(e.key==='ArrowDown'){act=Math.min(act+1,items.length-1);hi();e.preventDefault();}
+    else if(e.key==='ArrowUp'){act=Math.max(act-1,0);hi();e.preventDefault();}
+    else if(e.key==='Enter'){if(act>=0&&items[act]){pick(items[act]);e.preventDefault();}}
+    else if(e.key==='Escape'){close();}
+  });
+  document.addEventListener('mousedown',function(e){if(!wrap.contains(e.target))close();});
+})();
 
 // ----- Magic Quadrant + niche drill-down -----
 (function(){
