@@ -16,6 +16,7 @@ Usage:
 import json
 import sys
 import os
+import hashlib
 from datetime import datetime, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -59,6 +60,47 @@ def avg(xs):
     return round(sum(xs) / len(xs), 2) if xs else 0
 
 
+def _jitter(name, salt):
+    """Deterministic ±0.2 jitter from the vendor name, so the build is
+    reproducible (same vendors.json -> byte-identical dashboard.html) while the
+    ~197 dots — which land on a coarse 0.25-step score grid — don't overplot."""
+    h = int(hashlib.md5((str(name) + salt).encode("utf-8")).hexdigest(), 16)
+    return ((h % 1000) / 1000.0 - 0.5) * 0.4
+
+
+def magic_quadrant(vendors):
+    """Derive a Gartner-style Magic Quadrant from the workbook's 0-10 scores.
+
+      Ability to Execute   (Y) = mean(Snowflake, Retail/Customer)  — current
+                                  ecosystem fit + customer/market execution.
+      Completeness of Vision (X) = mean(AI, IPO/Upside)            — innovation
+                                  theme + growth/upside trajectory.
+
+    The quadrant cross is placed at the cohort MEAN of each axis (not a fixed
+    5.0): the raw scores cluster high, so a fixed midpoint would dump ~80% of
+    partners into one corner, whereas the data-centred split reads as 'above /
+    below average for this partner set'. mq_x/mq_y carry jitter for plotting;
+    mq_execute/mq_vision keep the true values for the tooltip."""
+    for v in vendors:
+        ex = avg([v.get("snowflake_score"), v.get("retail_score")])
+        vi = avg([v.get("ai_score"), v.get("ipo_score")])
+        v["mq_execute"] = ex
+        v["mq_vision"] = vi
+        v["mq_x"] = max(0.0, min(10.0, round(vi + _jitter(v.get("name"), "x"), 3)))
+        v["mq_y"] = max(0.0, min(10.0, round(ex + _jitter(v.get("name"), "y"), 3)))
+    tx = round(sum(v["mq_vision"] for v in vendors) / len(vendors), 2) if vendors else 5.0
+    ty = round(sum(v["mq_execute"] for v in vendors) / len(vendors), 2) if vendors else 5.0
+    counts = {"Leaders": 0, "Challengers": 0, "Visionaries": 0, "Niche Players": 0}
+    for v in vendors:
+        hi_e = v["mq_execute"] >= ty
+        hi_v = v["mq_vision"] >= tx
+        q = ("Leaders" if (hi_e and hi_v) else "Challengers" if hi_e
+             else "Visionaries" if hi_v else "Niche Players")
+        v["mq_quadrant"] = q
+        counts[q] += 1
+    return {"tx": tx, "ty": ty, "counts": counts}
+
+
 def kpis(vendors):
     n = len(vendors)
     a = sum(1 for v in vendors if v.get("tier") == "A")
@@ -84,6 +126,7 @@ def aggregate_count(vendors, key):
 
 
 def render(meta, vendors, src_path):
+    mq = magic_quadrant(vendors)
     by_cat = aggregate_count(vendors, "category")
     by_tier = {t: sum(1 for v in vendors if v.get("tier") == t) for t in ["A", "B", "C", "D"]}
     by_tier = {t: c for t, c in by_tier.items() if c}
@@ -108,6 +151,7 @@ def render(meta, vendors, src_path):
         "must_see": tierA,
         "gems": [v for v in vendors if v["hidden_gem"] and v.get("tier") != "A"][:6],
         "best_fit": sorted(vendors, key=lambda v: -(v.get("bryan_score") or 0))[:6],
+        "mq": mq,
         "vendors": vendors,
     }
     html = HTML_TEMPLATE.replace("/*__DATA__*/", json.dumps(payload, ensure_ascii=False))
@@ -246,6 +290,17 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     </div>
   </div>
 
+  <h3 class="sec">📊 Magic Quadrant <span class="hint">— all partners by Ability to Execute vs Completeness of Vision</span></h3>
+  <div class="panel">
+    <div id="mqLegend" class="sub" style="margin-bottom:10px"></div>
+    <div style="height:560px;position:relative">
+      <canvas id="mqChart" style="max-height:560px"></canvas>
+    </div>
+    <div class="sub" style="margin-top:12px;line-height:1.55">
+      <b style="color:var(--text)">How to read:</b> <b style="color:var(--text)">Ability to Execute</b> (vertical) = mean of Snowflake &amp; Retail/Customer scores · <b style="color:var(--text)">Completeness of Vision</b> (horizontal) = mean of AI &amp; IPO/Upside scores — both on the workbook's 0–10 scale. The quadrant cross sits at the cohort <i>average</i> of each axis, so the quadrants are relative to this partner set: <b style="color:var(--A)">Leaders</b> (high execute + vision), <b style="color:var(--accent)">Challengers</b> (execute), <b style="color:var(--gem)">Visionaries</b> (vision), <b style="color:#94a3b8">Niche Players</b> (neither). Tier-A must-sees are labelled; hover any dot for exact scores. Dots carry a tiny jitter so partners sharing a score stay visible.
+    </div>
+  </div>
+
   <div class="note" id="note"></div>
 </div>
 
@@ -301,6 +356,54 @@ new Chart(document.getElementById('profChart'),{type:'radar',
     {label:'All partners',data:DATA.profile_all,borderColor:'#29b5e8',backgroundColor:'rgba(41,181,232,.12)',pointBackgroundColor:'#29b5e8'}]},
   options:{plugins:{legend:{labels:{color:C.tick}}},
     scales:{r:{min:0,max:10,angleLines:{color:C.grid},grid:{color:C.grid},pointLabels:{color:C.tick,font:{size:11}},ticks:{display:false}}}}});
+
+// ----- Magic Quadrant (all partners) -----
+(function(){
+  const MQ=DATA.mq, V=DATA.vendors;
+  const qFill={'Leaders':'rgba(52,211,153,.07)','Challengers':'rgba(41,181,232,.06)','Visionaries':'rgba(167,139,250,.06)','Niche Players':'rgba(100,116,139,.05)'};
+  const legend=document.getElementById('mqLegend');
+  if(legend) legend.innerHTML='Cross at cohort avg — Vision <b style="color:var(--text)">'+MQ.tx+'</b> · Execute <b style="color:var(--text)">'+MQ.ty+'</b>  &nbsp;·&nbsp;  '+
+    Object.entries(MQ.counts).map(([q,n])=>q+' <b style="color:var(--text)">'+n+'</b>').join('  ·  ');
+  const mqPlugin={id:'mqQuad',
+    beforeDraw(ch){
+      const a=ch.chartArea, x=ch.scales.x, y=ch.scales.y; if(!a)return;
+      const ctx=ch.ctx, cx=x.getPixelForValue(MQ.tx), cy=y.getPixelForValue(MQ.ty);
+      ctx.save();
+      ctx.fillStyle=qFill['Leaders'];      ctx.fillRect(cx,a.top,a.right-cx,cy-a.top);
+      ctx.fillStyle=qFill['Challengers'];  ctx.fillRect(a.left,a.top,cx-a.left,cy-a.top);
+      ctx.fillStyle=qFill['Visionaries'];  ctx.fillRect(cx,cy,a.right-cx,a.bottom-cy);
+      ctx.fillStyle=qFill['Niche Players'];ctx.fillRect(a.left,cy,cx-a.left,a.bottom-cy);
+      ctx.strokeStyle='#2c3e60';ctx.lineWidth=1;ctx.setLineDash([5,4]);
+      ctx.beginPath();ctx.moveTo(cx,a.top);ctx.lineTo(cx,a.bottom);ctx.moveTo(a.left,cy);ctx.lineTo(a.right,cy);ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font='800 12px -apple-system,BlinkMacSystemFont,sans-serif';
+      ctx.fillStyle='rgba(52,211,153,.85)'; ctx.textAlign='right';ctx.textBaseline='top';   ctx.fillText('LEADERS',a.right-10,a.top+8);
+      ctx.fillStyle='rgba(41,181,232,.85)'; ctx.textAlign='left'; ctx.textBaseline='top';    ctx.fillText('CHALLENGERS',a.left+10,a.top+8);
+      ctx.fillStyle='rgba(167,139,250,.9)'; ctx.textAlign='right';ctx.textBaseline='bottom'; ctx.fillText('VISIONARIES',a.right-10,a.bottom-8);
+      ctx.fillStyle='rgba(148,163,184,.95)';ctx.textAlign='left'; ctx.textBaseline='bottom'; ctx.fillText('NICHE PLAYERS',a.left+10,a.bottom-8);
+      ctx.restore();
+    },
+    afterDatasetsDraw(ch){
+      const ctx=ch.ctx, x=ch.scales.x, y=ch.scales.y;
+      ctx.save();ctx.font='600 10px -apple-system,BlinkMacSystemFont,sans-serif';ctx.fillStyle='rgba(232,238,255,.92)';ctx.textAlign='left';ctx.textBaseline='middle';
+      V.filter(v=>v.tier==='A').forEach(v=>ctx.fillText(' '+v.name, x.getPixelForValue(v.mq_x)+5, y.getPixelForValue(v.mq_y)));
+      ctx.restore();
+    }
+  };
+  const ds=['A','B','C','D'].map(t=>({label:'Tier '+t,
+    data:V.filter(v=>v.tier===t).map(v=>({x:v.mq_x,y:v.mq_y,name:v.name,tier:v.tier,ov:v.overall_score,cat:v.category,ex:v.mq_execute,vi:v.mq_vision,q:v.mq_quadrant})),
+    backgroundColor:tierColor(t)+'cc',borderColor:tierColor(t),borderWidth:1,pointRadius:t==='A'?6:3.5,pointHoverRadius:8})).filter(d=>d.data.length);
+  new Chart(document.getElementById('mqChart'),{type:'scatter',data:{datasets:ds},
+    options:{maintainAspectRatio:false,animation:false,
+      plugins:{legend:{labels:{color:C.tick,usePointStyle:true}},
+        tooltip:{callbacks:{
+          title:c=>c[0].raw.name,
+          label:c=>[c.raw.q+' · Tier '+c.raw.tier,'Execute '+c.raw.ex+' · Vision '+c.raw.vi+' · Overall '+c.raw.ov, c.raw.cat]}}},
+      scales:{
+        x:{min:3,max:10,title:{display:true,text:'Completeness of Vision  →   (AI + IPO/Upside)',color:'#aab6c9',font:{weight:'700'}},ticks:{color:C.tick},grid:{color:C.grid}},
+        y:{min:3,max:10,title:{display:true,text:'Ability to Execute  →   (Snowflake + Retail)',color:'#aab6c9',font:{weight:'700'}},ticks:{color:C.tick},grid:{color:C.grid}}}},
+    plugins:[mqPlugin]});
+})();
 
 // Table
 const tbody=document.querySelector('#vtable tbody');
