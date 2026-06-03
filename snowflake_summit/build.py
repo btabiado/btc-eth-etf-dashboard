@@ -569,6 +569,32 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
        cap (and valChart's inline 380px) would otherwise clip the plot. */
     #topChart,#nicheChart,#profChart,#valChart{max-height:none!important}
   }
+  /* ---------- P1 · floor map ---------- */
+  .planfit,.planhint{display:none}
+  @media (max-width:640px){
+    /* Zone columns → full-width vertical sections; no horizontal scroll or slider. */
+    #mapColsWrap{overflow-x:hidden;padding:12px}
+    #mapColsWrap .maprow{flex-direction:column;gap:22px;min-width:0}
+    #mapColsWrap .zonecol{width:100%}
+    #mapColsNav{display:none!important}
+    .zonehd{text-align:left;font-size:13px}
+    .booth{padding:10px 12px}
+    .booth .bnm{font-size:14px}
+    .booth .bn{font-size:11px}
+    .mapsearch{width:100%}
+    .maptoggle{display:flex;width:100%;margin-bottom:12px}
+    .maptoggle button{flex:1;min-height:44px;font-size:13px}
+    /* Floor plan → a pinch-zoom / pannable canvas with a Fit button. */
+    #mapPlanWrap{position:relative;overflow:hidden;touch-action:none;border:1px solid var(--border);
+      border-radius:14px;background:linear-gradient(180deg,#0e1730,#0c1426)}
+    #mapPlanWrap .planbox{height:460px;border:none;border-radius:0;background:none}
+    #mapPlan{transform-origin:0 0}
+    .planfit{display:inline-flex;align-items:center;gap:5px;position:absolute;top:10px;right:10px;z-index:6;
+      background:rgba(15,24,48,.94);border:1px solid var(--accent);color:#dff3ff;border-radius:10px;
+      padding:9px 12px;font:inherit;font-size:13px;font-weight:600;min-height:40px;cursor:pointer}
+    .planhint{display:block;position:absolute;left:10px;bottom:10px;z-index:6;pointer-events:none;
+      background:rgba(11,16,32,.78);color:var(--muted);border-radius:8px;padding:5px 9px;font-size:11px}
+  }
 </style>
 </head>
 <body>
@@ -761,7 +787,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <button type="button" id="tabCols" aria-pressed="false">▦ Zone columns</button>
     </div>
     <div class="maplegend" id="mapLegend"></div>
-    <div id="mapPlanWrap"><div class="planbox" id="mapPlan" role="region" aria-label="Basecamp floor plan"></div></div>
+    <div id="mapPlanWrap"><div class="planbox" id="mapPlan" role="region" aria-label="Basecamp floor plan"></div><button type="button" class="planfit no-print" id="planFit" aria-label="Fit floor plan to screen">⤢ Fit</button><span class="planhint" aria-hidden="true">pinch to zoom · drag to pan</span></div>
     <div id="mapColsNav" style="display:none">
       <div class="mapcols-hint">◀ slide to pan across all zones ▶</div>
       <input type="range" id="mapColsSlider" class="mapcols-slider" min="0" max="1000" value="0" aria-label="Scroll the floor map left and right">
@@ -1244,23 +1270,49 @@ draw();
   var tabPlan=document.getElementById('tabPlan'), tabCols=document.getElementById('tabCols'),
       planWrap=document.getElementById('mapPlanWrap'), colsWrap=document.getElementById('mapColsWrap'),
       colsNav=document.getElementById('mapColsNav'), slider=document.getElementById('mapColsSlider');
+  var isMob=!!(window.matchMedia&&window.matchMedia('(max-width:640px)').matches);
   function syncSlider(){if(!slider||!colsWrap)return;var max=colsWrap.scrollWidth-colsWrap.clientWidth;slider.value=max>0?Math.round(colsWrap.scrollLeft/max*1000):0;}
   if(slider&&colsWrap){
     slider.addEventListener('input',function(){var max=colsWrap.scrollWidth-colsWrap.clientWidth;colsWrap.scrollLeft=max*(slider.value/1000);});
     colsWrap.addEventListener('scroll',syncSlider,{passive:true});
     colsWrap.addEventListener('wheel',function(e){if(Math.abs(e.deltaY)>Math.abs(e.deltaX)){colsWrap.scrollLeft+=e.deltaY;e.preventDefault();}},{passive:false});
   }
+  // MOBILE: the spatial floor plan becomes a pinch-zoom + pannable canvas (a CSS
+  // transform on #mapPlan, clipped by #mapPlanWrap) with a Fit button. The booths
+  // are tiny when the whole floor is fit to a phone, so zoom-in is the point.
+  // Desktop keeps the original static plan untouched.
+  var planReset=function(){};
+  if(isMob && plan && planWrap){
+    var pz={s:1,tx:0,ty:0}, pts=new Map(), last=null, pinch=null, moved=false;
+    function applyT(){plan.style.transform='translate('+pz.tx+'px,'+pz.ty+'px) scale('+pz.s+')';}
+    function rel(e){var r=planWrap.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};}
+    function zoomTo(ns,cx,cy){ns=Math.min(6,Math.max(1,ns));var cX=(cx-pz.tx)/pz.s,cY=(cy-pz.ty)/pz.s;pz.s=ns;pz.tx=cx-cX*ns;pz.ty=cy-cY*ns;applyT();}
+    planReset=function(){pz.s=1;pz.tx=0;pz.ty=0;applyT();};
+    planWrap.addEventListener('pointerdown',function(e){pts.set(e.pointerId,rel(e));try{planWrap.setPointerCapture(e.pointerId);}catch(_){}moved=false;
+      if(pts.size===1){last=rel(e);} else if(pts.size===2){var a=[...pts.values()];pinch={d:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),s:pz.s};}});
+    planWrap.addEventListener('pointermove',function(e){if(!pts.has(e.pointerId))return;var p=rel(e);pts.set(e.pointerId,p);
+      if(pts.size>=2&&pinch){var a=[...pts.values()];var d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);if(pinch.d>0){zoomTo(pinch.s*d/pinch.d,(a[0].x+a[1].x)/2,(a[0].y+a[1].y)/2);moved=true;}}
+      else if(pts.size===1&&last&&pz.s>1){pz.tx+=p.x-last.x;pz.ty+=p.y-last.y;last=p;moved=true;applyT();}
+      else if(pts.size===1){last=p;}});
+    function up(e){pts.delete(e.pointerId);if(pts.size<2)pinch=null;last=pts.size?[...pts.values()][0]:null;}
+    planWrap.addEventListener('pointerup',up);planWrap.addEventListener('pointercancel',up);
+    // A drag / pinch must not also fire the booth-detail click.
+    plan.addEventListener('click',function(e){if(moved){e.stopPropagation();e.preventDefault();moved=false;}},true);
+    var pf=document.getElementById('planFit'); if(pf) pf.addEventListener('click',planReset);
+  }
   function show(p){
     if(planWrap) planWrap.style.display=p?'block':'none';
     if(colsWrap) colsWrap.style.display=p?'none':'block';
-    if(colsNav) colsNav.style.display=p?'none':'block';
+    if(colsNav) colsNav.style.display=(p||isMob)?'none':'block';
     if(tabPlan){tabPlan.classList.toggle('on',p);tabPlan.setAttribute('aria-pressed',String(p));}
     if(tabCols){tabCols.classList.toggle('on',!p);tabCols.setAttribute('aria-pressed',String(!p));}
-    if(!p) setTimeout(syncSlider,30);
+    if(p&&isMob) planReset();
+    if(!p&&!isMob) setTimeout(syncSlider,30);
   }
   if(tabPlan) tabPlan.addEventListener('click',function(){show(true);});
   if(tabCols) tabCols.addEventListener('click',function(){show(false);});
-  show(!!(plan && REG.length));
+  // Mobile defaults to the readable Zone-columns list; desktop keeps the spatial plan.
+  show(isMob ? false : !!(plan && REG.length));
 })();
 
 // Download / print to PDF — the @media print stylesheet restyles the page; the
