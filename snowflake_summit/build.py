@@ -111,6 +111,16 @@ def render(meta, vendors, src_path):
         "vendors": vendors,
     }
     html = HTML_TEMPLATE.replace("/*__DATA__*/", json.dumps(payload, ensure_ascii=False))
+    # Inline Chart.js so the page is fully self-contained (no CDN dependency) —
+    # works offline and for any recipient regardless of their network policy.
+    chartjs_path = os.path.join(HERE, "vendor", "chart.umd.js")
+    if os.path.exists(chartjs_path):
+        with open(chartjs_path) as cf:
+            chartjs = cf.read()
+        html = html.replace(
+            '<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>',
+            "<script>\n/* Chart.js 4.4.1 (vendored, MIT) */\n" + chartjs + "\n</script>",
+        )
     out_path = os.path.join(HERE, "dashboard.html")
     with open(out_path, "w") as f:
         f.write(html)
