@@ -290,6 +290,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .topbar .hit{font-size:12px;color:var(--muted);white-space:nowrap}
   .controls{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:11px;align-items:center}
   .controls input,.controls select{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 10px;font-size:12.5px}
+  /* In-table filter row: a dropdown aligned under each filterable column header.
+     Static (not sticky) so it scrolls away while the column titles stick. */
+  .filterrow th{position:static;background:var(--panel);padding:4px 6px;border-bottom:1px solid var(--border)}
+  .filterrow select{width:100%;min-width:0;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 6px;font-size:11px}
   .ovrbar{display:inline-block;height:7px;border-radius:4px;vertical-align:middle;margin-right:7px}
   .note{color:var(--muted);font-size:12px;margin-top:18px;line-height:1.55;border-top:1px solid var(--border);padding-top:14px}
   .note code{color:var(--accent)}
@@ -340,20 +344,24 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
   <h3 class="sec">All Partner Vendors <span class="hint">— click a column to sort · 💎 = hidden gem</span></h3>
   <div class="panel">
-    <div class="controls">
-      <select id="nicheFilter"><option value="">All niches</option></select>
-      <select id="catFilter"><option value="">All categories</option></select>
-      <select id="tierFilter"><option value="">All tiers</option></select>
-    </div>
     <div class="scroll">
     <table id="vtable">
-      <thead><tr>
+      <thead>
+      <tr>
         <th data-k="rank">#</th><th data-k="name">Partner</th><th data-k="booth">Booth</th>
         <th data-k="niche">Niche</th><th data-k="category">Category</th><th data-k="company_type">Type</th>
         <th data-k="snowflake_score" class="num">Snow</th><th data-k="ai_score" class="num">AI</th>
         <th data-k="retail_score" class="num">Retail</th><th data-k="ipo_score" class="num">IPO</th>
         <th data-k="bryan_score" class="num">Fit</th>
         <th data-k="overall_score" class="num">Overall</th><th data-k="tier">Tier</th>
+      </tr>
+      <tr class="filterrow">
+        <th></th><th></th><th></th>
+        <th><select id="nicheFilter"><option value="">All niches</option></select></th>
+        <th><select id="catFilter"><option value="">All categories</option></select></th>
+        <th><select id="typeFilter"><option value="">All types</option></select></th>
+        <th></th><th></th><th></th><th></th><th></th><th></th>
+        <th><select id="tierFilter"><option value="">All tiers</option></select></th>
       </tr></thead>
       <tbody></tbody>
     </table>
@@ -437,17 +445,18 @@ new Chart(document.getElementById('profChart'),{type:'radar',
 
 // Table
 const tbody=document.querySelector('#vtable tbody');
-const nicheSel=document.getElementById('nicheFilter'),catSel=document.getElementById('catFilter'),tierSel=document.getElementById('tierFilter');
+const nicheSel=document.getElementById('nicheFilter'),catSel=document.getElementById('catFilter'),tierSel=document.getElementById('tierFilter'),typeSel=document.getElementById('typeFilter');
 Object.keys(DATA.by_niche).forEach(nz=>nicheSel.add(new Option(`${nz} (${DATA.by_niche[nz]})`,nz)));
 [...new Set(DATA.vendors.map(v=>v.category))].sort().forEach(c=>catSel.add(new Option(c,c)));
+[...new Set(DATA.vendors.map(v=>v.company_type).filter(Boolean))].sort().forEach(t=>typeSel.add(new Option(t,t)));
 ['A','B','C'].forEach(t=>tierSel.add(new Option('Tier '+t,t)));
 let sortK='rank',sortAsc=true;
 function draw(){
-  const q=document.getElementById('search').value.toLowerCase(),nz=nicheSel.value,cf=catSel.value,tf=tierSel.value;
+  const q=document.getElementById('search').value.toLowerCase(),nz=nicheSel.value,cf=catSel.value,tf=tierSel.value,yf=typeSel.value;
   let r=DATA.vendors.filter(v=>(!q||v.name.toLowerCase().includes(q)||(v.category||'').toLowerCase().includes(q)||(v.niche||'').toLowerCase().includes(q))
-    &&(!nz||v.niche===nz)&&(!cf||v.category===cf)&&(!tf||v.tier===tf));
+    &&(!nz||v.niche===nz)&&(!cf||v.category===cf)&&(!tf||v.tier===tf)&&(!yf||v.company_type===yf));
   const hit=document.getElementById('searchhit');
-  if(hit) hit.textContent = (q||nz||cf||tf) ? `${r.length} of ${DATA.vendors.length} match` : `${DATA.vendors.length} vendors`;
+  if(hit) hit.textContent = (q||nz||cf||tf||yf) ? `${r.length} of ${DATA.vendors.length} match` : `${DATA.vendors.length} vendors`;
   r.sort((a,b)=>{let x=a[sortK],y=b[sortK];if(typeof x==='string'){x=x.toLowerCase();y=(y||'').toLowerCase();}
     if(x===null||x===undefined)x=-1;if(y===null||y===undefined)y=-1;return (x>y?1:x<y?-1:0)*(sortAsc?1:-1);});
   tbody.innerHTML=r.map(v=>{
@@ -460,9 +469,9 @@ function draw(){
       <td class="num"><span class="ovrbar" style="width:${w}px;background:${tierColor(v.tier)}"></span><b>${fmt(v.overall_score)}</b></td>
       <td><span class="tag ${tierClass(v.tier)}">${v.tier}</span></td></tr>`;}).join('');
 }
-document.querySelectorAll('#vtable th').forEach(th=>th.onclick=()=>{
-  const k=th.dataset.k;if(sortK===k)sortAsc=!sortAsc;else{sortK=k;sortAsc=(k==='rank'||k==='name'||k==='category'||k==='tier'||k==='niche');}draw();});
-['input','change'].forEach(e=>{document.getElementById('search').addEventListener(e,draw);nicheSel.addEventListener(e,draw);catSel.addEventListener(e,draw);tierSel.addEventListener(e,draw);});
+document.querySelectorAll('#vtable thead tr:first-child th').forEach(th=>th.onclick=()=>{
+  const k=th.dataset.k;if(!k)return;if(sortK===k)sortAsc=!sortAsc;else{sortK=k;sortAsc=(k==='rank'||k==='name'||k==='category'||k==='tier'||k==='niche');}draw();});
+['input','change'].forEach(e=>{document.getElementById('search').addEventListener(e,draw);nicheSel.addEventListener(e,draw);catSel.addEventListener(e,draw);tierSel.addEventListener(e,draw);typeSel.addEventListener(e,draw);});
 draw();
 
 // ----- Magic Quadrant + niche drill-down -----
