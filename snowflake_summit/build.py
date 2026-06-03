@@ -210,7 +210,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <h1>Snowflake Summit 2026 — Partner Scouting Dashboard</h1>
       <div class="sub" id="subhead"></div>
     </div>
-    <a class="dl" href="Snowflake_Summit_2026_Master_Partner_Scouting.xlsx" download>⬇ Download source spreadsheet</a>
+    <a class="dl" href="../" style="margin-left:auto;background:transparent;border-color:var(--border);color:var(--muted)" title="Back to the main dashboard">← Main dashboard</a>
+    <a class="dl" href="Snowflake_Summit_2026_Master_Partner_Scouting.xlsx" download style="margin-left:0">⬇ Download source spreadsheet</a>
   </div>
 </header>
 <div class="wrap">
