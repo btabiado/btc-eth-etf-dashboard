@@ -258,7 +258,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <title>Snowflake Summit 2026 — Partner Scouting Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
@@ -508,6 +508,61 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .vsheet{padding:18px 16px}
     .nitem .nh{font-size:15px}
   }
+  /* =======================================================================
+     MOBILE-ONLY REDESIGN  (max-width:640px) — additive, must NOT affect desktop.
+     Native pinch-zoom + a real responsive layout replace the old text-zoom
+     "magnifier". Every rule here is scoped to phones; the >=641px render is
+     untouched. Built up in phases: P0 universal · P1 charts/floor-map/MQ · P2 polish.
+     ======================================================================= */
+  /* ---------- P0 · universal ---------- */
+  @media (max-width:640px){
+    /* Kill the in-page zoom control — native pinch-zoom replaces it. This is the
+       #1 reason every screen looked like a shrunk desktop. */
+    .zoomctl{display:none !important}
+    /* Safe-area insets — clear the iOS status bar (top) and the Safari toolbar
+       (bottom) now that viewport-fit=cover lets content run under them. */
+    header{padding-top:max(16px,env(safe-area-inset-top))}
+    .wrap,.mapwrap{padding-bottom:max(28px,env(safe-area-inset-bottom))}
+    /* Comfortable tap targets (>=44px) with breathing room. */
+    .dl,.infobtn{min-height:44px;display:inline-flex;align-items:center;gap:5px}
+    .navbtns{gap:8px}
+    .bchip{min-height:40px;display:inline-flex;align-items:center}
+    /* Never let a stray element force a horizontal scrollbar on the page. */
+    .wrap,.mapwrap{max-width:100%;overflow-x:clip}
+  }
+  /* Tools menu + bottom sheet are hidden entirely on desktop; revealed on phones. */
+  .toolsbtn,.toolsheet,.toolsheet-backdrop{display:none}
+  /* ---------- P0 · header collapse ---------- */
+  @media (max-width:640px){
+    h1{font-size:clamp(1.05rem,4.6vw,1.4rem);line-height:1.2}
+    .sub{font-size:11.5px;margin-top:3px}
+    header{padding-left:14px;padding-right:14px;padding-bottom:12px}
+    .brand{gap:10px}
+    /* Collapse the 6-action cluster → 2 chips (Magic Quadrant, Floor Map) + Tools ▾. */
+    .navbtns{width:100%;margin-left:0;gap:8px;justify-content:flex-start}
+    .navbtns>#scoreInfoBtn,
+    .navbtns>a[href="?view=news"],
+    .navbtns>a[download],
+    .navbtns>#pdfBtn{display:none}
+    .navbtns>a[href="?view=mq"],
+    .navbtns>a[href="?view=map"]{flex:1 1 auto;justify-content:center;font-size:12.5px;padding:10px 6px;white-space:nowrap}
+    .toolsbtn{display:inline-flex;align-items:center;gap:5px;min-height:44px;background:var(--panel2);
+      border:1px solid var(--border);color:var(--text);border-radius:9px;padding:10px 12px;font-size:12.5px;
+      font-family:inherit;cursor:pointer;white-space:nowrap}
+    .toolsbtn[aria-expanded=true]{border-color:var(--accent);color:#dff3ff}
+    /* The bottom sheet itself (slide-up). */
+    .toolsheet-backdrop.open{display:block;position:fixed;inset:0;background:rgba(6,12,24,.5);z-index:300}
+    .toolsheet.open{display:flex;flex-direction:column;position:fixed;left:0;right:0;bottom:0;z-index:310;
+      background:linear-gradient(180deg,#15233f,#0f1830);border-top:1px solid var(--accent2);
+      border-radius:18px 18px 0 0;padding:8px 14px max(18px,env(safe-area-inset-bottom));
+      box-shadow:0 -16px 40px rgba(0,0,0,.5)}
+    .toolsheet-grip{display:block;width:42px;height:4px;border-radius:3px;background:var(--border);margin:4px auto 8px}
+    .toolsheet-item{display:flex;align-items:center;gap:11px;min-height:48px;padding:12px 8px;
+      border:none;border-bottom:1px solid var(--border);background:none;color:var(--text);
+      font:inherit;font-size:15px;text-decoration:none;text-align:left;width:100%;cursor:pointer}
+    .toolsheet-item:last-child{border-bottom:none}
+    .toolsheet-item:active{background:var(--panel2)}
+  }
 </style>
 </head>
 <body>
@@ -524,11 +579,22 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <a class="dl" href="?view=mq" target="_blank" rel="noopener" title="Opens the Magic Quadrant in its own window">📊 Magic Quadrant ↗</a>
       <a class="dl" href="?view=map" target="_blank" rel="noopener" title="Opens the interactive Basecamp floor map in its own window">🗺 Floor Map ↗</a>
       <a class="dl" href="Snowflake_Summit_2026_Master_Partner_Scouting.xlsx" download>⬇ Download source spreadsheet</a>
-      <button class="dl no-print" id="pdfBtn" type="button" style="cursor:pointer" title="Print the whole dashboard or save it as a PDF">⬇ Download PDF</button>
+      <button class="dl no-print pdfBtn" id="pdfBtn" type="button" style="cursor:pointer" title="Print the whole dashboard or save it as a PDF">⬇ Download PDF</button>
       <span class="zoomctl" title="Zoom"><button type="button" class="zbtn" data-zoom="out" aria-label="Zoom out">🔍−</button><span class="zlevel">100%</span><button type="button" class="zbtn" data-zoom="in" aria-label="Zoom in">🔍+</button></span>
+      <button type="button" class="toolsbtn no-print" id="toolsBtn" aria-haspopup="true" aria-expanded="false" aria-controls="toolsSheet">⚙ Tools ▾</button>
     </div>
   </div>
 </header>
+<!-- Mobile-only "Tools ▾" bottom sheet (hidden on desktop) — holds the actions
+     pulled out of the header so the phone landing is just 2 chips + Tools. -->
+<div class="toolsheet-backdrop no-print" id="toolsBackdrop"></div>
+<div class="toolsheet no-print" id="toolsSheet" role="menu" aria-label="More tools" aria-hidden="true">
+  <div class="toolsheet-grip" aria-hidden="true"></div>
+  <button type="button" class="toolsheet-item scoreInfoTrigger" role="menuitem" aria-haspopup="dialog" aria-controls="scorePop">ⓘ <span>Scoring — how the scores work</span></button>
+  <a class="toolsheet-item" role="menuitem" href="?view=news" target="_blank" rel="noopener">📰 <span>Summit News</span></a>
+  <a class="toolsheet-item" role="menuitem" href="Snowflake_Summit_2026_Master_Partner_Scouting.xlsx" download>⬇ <span>Download source spreadsheet</span></a>
+  <button type="button" class="toolsheet-item pdfBtn" role="menuitem">⬇ <span>Download PDF</span></button>
+</div>
 <div class="scorepop no-print" id="scorePop" role="dialog" aria-modal="false" aria-label="How the scores are calculated" hidden>
   <button class="x" type="button" id="scorePopX" aria-label="Close">&times;</button>
   <h3>How the scores work</h3>
@@ -727,16 +793,39 @@ if(_view==='news'){
 }
 
 // A-/A+ text zoom — scales the page via CSS zoom; persists across visits + views.
+// MOBILE (<=640px): the control is hidden and native pinch-zoom replaces it, so we
+// never apply a persisted shrink (the old "80%" that made phones look like tiny
+// desktop). Desktop path is unchanged.
 (function(){
+  var isMobile = window.matchMedia && window.matchMedia('(max-width:640px)').matches;
   var z=parseFloat(localStorage.getItem('summitZoom')); if(!z||isNaN(z)) z=1;
+  if(isMobile) z=1;
   function apply(){document.documentElement.style.zoom=z;document.querySelectorAll('.zlevel').forEach(function(e){e.textContent=Math.round(z*100)+'%';});}
   function step(d){z=Math.min(1.6,Math.max(0.8,Math.round((z+d)*100)/100));localStorage.setItem('summitZoom',String(z));apply();}
   document.querySelectorAll('.zbtn').forEach(function(b){b.addEventListener('click',function(){step(b.getAttribute('data-zoom')==='in'?0.1:-0.1);});});
-  apply();
+  if(!isMobile) apply();
 })();
 
-document.getElementById('subhead').textContent =
-  `${DATA.vendors.length} partners · ${DATA.meta.event||''} · scoring by ${DATA.meta.owner||'owner'} · source: ${DATA.source}`;
+// Mobile "Tools ▾" bottom sheet — opens the actions pulled out of the phone header
+// (Scoring / Summit News / spreadsheet / PDF). No-op on desktop (the trigger is hidden).
+(function(){
+  var btn=document.getElementById('toolsBtn'), sheet=document.getElementById('toolsSheet'), back=document.getElementById('toolsBackdrop');
+  if(!btn||!sheet) return;
+  function open(){sheet.classList.add('open');if(back)back.classList.add('open');btn.setAttribute('aria-expanded','true');sheet.setAttribute('aria-hidden','false');}
+  function close(){sheet.classList.remove('open');if(back)back.classList.remove('open');btn.setAttribute('aria-expanded','false');sheet.setAttribute('aria-hidden','true');}
+  btn.addEventListener('click',function(e){e.stopPropagation();sheet.classList.contains('open')?close():open();});
+  if(back) back.addEventListener('click',close);
+  sheet.querySelectorAll('.toolsheet-item').forEach(function(it){it.addEventListener('click',function(){setTimeout(close,0);});});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&sheet.classList.contains('open'))close();});
+})();
+
+(function(){
+  var sh=document.getElementById('subhead'); if(!sh) return;
+  var base=`${DATA.vendors.length} partners · ${DATA.meta.event||''} · scoring by ${DATA.meta.owner||'owner'}`;
+  // Drop the "· source: …" tail on phones to keep the header subtitle to one tidy line.
+  var isMobile = window.matchMedia && window.matchMedia('(max-width:640px)').matches;
+  sh.textContent = isMobile ? base : (base + ` · source: ${DATA.source}`);
+})();
 
 document.getElementById('kpis').innerHTML = DATA.kpis.map(k=>
   `<div class="kpi"><div class="v">${k.value}</div><div class="l">${k.label}</div><div class="s">${k.sub}</div></div>`).join('');
@@ -1158,7 +1247,7 @@ draw();
 
 // Download / print to PDF — the @media print stylesheet restyles the page; the
 // browser print dialog saves the whole dashboard (all sections + current MQ view).
-(function(){var b=document.getElementById('pdfBtn');if(b)b.addEventListener('click',function(){window.print();});})();
+(function(){document.querySelectorAll('.pdfBtn').forEach(function(b){b.addEventListener('click',function(){window.print();});});})();
 (function(){var t=document.getElementById('toTop');if(!t)return;t.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'});});
   var onScroll=function(){t.classList.toggle('show',(window.scrollY||document.documentElement.scrollTop)>320);};
   window.addEventListener('scroll',onScroll,{passive:true});onScroll();})();
