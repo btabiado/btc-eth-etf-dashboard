@@ -605,6 +605,40 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     #mqQuadChips{gap:8px}
     #mqBack{min-height:40px}
   }
+  /* ---------- P2 · table -> cards, bottom-sheet detail, sticky header ---------- */
+  .vcards,.vfilters-m{display:none}
+  @keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  @media (max-width:640px){
+    /* All Partner Vendors: the 13-column table -> full-width stacked cards, with
+       the column filters surfaced as a full-width bar above them. */
+    .scroll{display:none}
+    .sorthint{display:none}
+    .vfilters-m{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+    .vfilters-m select{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);
+      border-radius:9px;padding:10px;font-size:13px;min-height:44px}
+    .vcards{display:flex;flex-direction:column;gap:10px}
+    .vcard{background:linear-gradient(160deg,#15233f,#101a30);border:1px solid var(--border);border-radius:12px;padding:13px 14px;cursor:pointer}
+    .vcard:active{border-color:var(--accent)}
+    .vcard.gem .vcard-name::after{content:" 💎";font-size:11px}
+    .vcard-top{display:flex;align-items:center;gap:8px}
+    .vcard-rank{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;min-width:34px}
+    .vcard-name{font-weight:700;font-size:15px;flex:1;min-width:0}
+    .vcard-meta{font-size:12px;color:var(--muted);margin-top:7px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+    .vcard-score{margin-top:9px;font-size:13px;color:var(--muted)}
+    .vcard-score b{color:var(--text);font-size:17px}
+    /* Vendor detail -> slide-up bottom sheet (was a centered modal). */
+    .vmodal{align-items:flex-end;padding:0}
+    .vsheet{max-width:none;width:100%;border-radius:18px 18px 0 0;
+      padding:16px 18px max(20px,env(safe-area-inset-bottom));max-height:92dvh;overflow:auto;animation:sheetUp .22s ease}
+    .vsheet::before{content:"";display:block;width:42px;height:4px;border-radius:3px;background:var(--border);margin:0 auto 12px}
+    .vsheet .x{top:14px;right:16px;font-size:26px}
+    /* Sticky, compacting header (chips / Back stay reachable; safe-area aware). */
+    header{position:sticky;top:0;z-index:50}
+    body.compact header .sub{display:none}
+    body.compact header{padding-top:max(8px,env(safe-area-inset-top));padding-bottom:8px}
+    body.compact h1{font-size:1.02rem}
+    body.compact .logo{width:28px;height:28px}
+  }
 </style>
 </head>
 <body>
@@ -680,8 +714,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <h3 class="sec">🤝 Best Bryan Recommend <span class="hint">— top career / networking fit</span></h3>
   <div class="cards" id="bestfit"></div>
 
-  <h3 class="sec">All Partner Vendors <span class="hint">— click a column to sort · 💎 = hidden gem</span></h3>
+  <h3 class="sec">All Partner Vendors <span class="hint">— <span class="sorthint">click a column to sort · </span>💎 = hidden gem</span></h3>
   <div class="panel">
+    <div class="vfilters-m no-print" id="vFiltersM"></div>
     <div class="scroll">
     <table id="vtable">
       <thead>
@@ -704,6 +739,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <tbody></tbody>
     </table>
     </div>
+    <div class="vcards" id="vcards"></div>
   </div>
 
   <div class="note" id="note"></div>
@@ -963,6 +999,10 @@ Object.keys(DATA.by_niche).forEach(nz=>nicheSel.add(new Option(`${nz} (${DATA.by
 [...new Set(DATA.vendors.map(v=>v.category))].sort().forEach(c=>catSel.add(new Option(c,c)));
 [...new Set(DATA.vendors.map(v=>v.company_type).filter(Boolean))].sort().forEach(t=>typeSel.add(new Option(t,t)));
 ['A','B','C'].forEach(t=>tierSel.add(new Option('Tier '+t,t)));
+// Phones: surface the column filters as a full-width bar above the cards (the
+// table that normally hosts them is hidden). Moving the elements keeps their
+// change-listeners intact; desktop leaves them in the table columns.
+if(IS_MOBILE){var fbar=document.getElementById('vFiltersM');if(fbar){[nicheSel,catSel,typeSel,tierSel].forEach(function(s){fbar.appendChild(s);});}}
 let sortK='rank',sortAsc=true;
 function draw(){
   const q=document.getElementById('search').value.toLowerCase(),nz=nicheSel.value,cf=catSel.value,tf=tierSel.value,yf=typeSel.value;
@@ -972,6 +1012,20 @@ function draw(){
   if(hit) hit.textContent = (q||nz||cf||tf||yf) ? `${r.length} of ${DATA.vendors.length} match` : `${DATA.vendors.length} vendors`;
   r.sort((a,b)=>{let x=a[sortK],y=b[sortK];if(typeof x==='string'){x=x.toLowerCase();y=(y||'').toLowerCase();}
     if(x===null||x===undefined)x=-1;if(y===null||y===undefined)y=-1;return (x>y?1:x<y?-1:0)*(sortAsc?1:-1);});
+  if(IS_MOBILE){
+    // Phones: a 13-column table can't fit — render stacked cards (Partner / Booth /
+    // Niche / score) instead, reusing the card aesthetic. Tap a card for full detail.
+    var vc=document.getElementById('vcards');
+    if(vc) vc.innerHTML=r.map(function(v){
+      var w=Math.round(((v.overall_score||0)/10)*54)+6;
+      return '<div class="vcard'+(v.hidden_gem?' gem':'')+'" data-v="'+esc(v.name)+'" role="button" tabindex="0" aria-label="View company detail for '+esc(v.name)+'">'+
+        '<div class="vcard-top"><span class="vcard-rank">#'+v.rank+'</span><span class="vcard-name">'+esc(v.name)+'</span><span class="tag '+tierClass(v.tier)+'">'+esc(v.tier)+'</span></div>'+
+        '<div class="vcard-meta"><span class="tag tNi">'+esc(fmt(v.niche))+'</span> · booth '+esc(fmt(v.booth))+' · '+esc(fmt(v.category))+'</div>'+
+        '<div class="vcard-score"><span class="ovrbar" style="width:'+w+'px;background:'+tierColor(v.tier)+'"></span><b>'+fmt(v.overall_score)+'</b> <span>/ 10'+(v.company_type?(' · '+esc(v.company_type)):'')+'</span></div>'+
+        '</div>';
+    }).join('');
+    return;
+  }
   tbody.innerHTML=r.map(v=>{
     const w=Math.round(((v.overall_score||0)/10)*54)+6;
     return `<tr class="${v.hidden_gem?'gem-row':''}" data-v="${esc(v.name)}" tabindex="0" aria-label="View company detail for ${esc(v.name)}" style="cursor:pointer">
@@ -1353,6 +1407,15 @@ draw();
 (function(){var t=document.getElementById('toTop');if(!t)return;t.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'});});
   var onScroll=function(){t.classList.toggle('show',(window.scrollY||document.documentElement.scrollTop)>320);};
   window.addEventListener('scroll',onScroll,{passive:true});onScroll();})();
+
+// Phones: the sticky header compacts (subtitle hides, bar slims) once you scroll,
+// so it stays out of the way while keeping the chips / Back link reachable.
+(function(){
+  if(!(window.matchMedia&&window.matchMedia('(max-width:640px)').matches))return;
+  var ticking=false;
+  function on(){document.body.classList.toggle('compact',(window.scrollY||document.documentElement.scrollTop)>80);ticking=false;}
+  window.addEventListener('scroll',function(){if(!ticking){ticking=true;requestAnimationFrame(on);}},{passive:true});on();
+})();
 
 // Vendor detail — click any vendor card or table row for full company info.
 (function(){
