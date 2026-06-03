@@ -101,6 +101,80 @@ def magic_quadrant(vendors):
     return {"tx": tx, "ty": ty, "counts": counts}
 
 
+# Keyword roll-up of the 68 raw categories into ~10 coherent market segments for
+# the drill-down. First matching rule wins; order resolves overlaps (e.g.
+# 'BI / AI Analytics' -> BI before AI; 'Composable CDP / Reverse ETL' -> Customer
+# before Integration).
+SEGMENT_RULES = [
+    ("Consulting & SI", ["consult", "bpo", "staffing", "it services"]),
+    ("Quality & Observability", ["observability", "quality", "reliab", "testing"]),
+    ("Governance & Catalog", ["governance", "catalog", "mdm", "entity resolution", "lineage"]),
+    ("Security & Privacy", ["security", "privacy", "trust", "vault"]),
+    ("Orchestration", ["orchestrat", "airflow"]),
+    ("Customer Data & Marketing", ["cdp", "customer", "crm", "marketing", "adtech", "media buying", "engagement", "contact center", "cx /", " cx"]),
+    ("Database & Lakehouse", ["lakehouse", "database", "streaming", "query engine", "trino", "warehouse", "olap"]),
+    ("BI & Analytics", ["bi /", "bi/", "analytics", "visualization", "notebook"]),
+    ("Integration & ELT", ["elt", "etl", "integration", "pipeline", "ingest", "transformation", "ipaas", "data engineering"]),
+    ("AI & Agents", ["ai", "agent", "llm", " ml"]),
+]
+
+
+def _segment_of(category):
+    """Map a raw category string to one of ~10 market segments. The catch-all
+    'Data / AI Ecosystem' bucket and anything unmatched fall to broad/other."""
+    if category == "Data / AI Ecosystem":
+        return "Data & AI Ecosystem (broad)"
+    c = (category or "").lower()
+    for label, keys in SEGMENT_RULES:
+        if any(k in c for k in keys):
+            return label
+    return "Other / Emerging"
+
+
+def magic_quadrant_segments(vendors, min_n=5, var_floor=1.0):
+    """Per-segment Magic Quadrant metadata for the taxonomy drill-down. Runs
+    AFTER magic_quadrant() (needs mq_execute/mq_vision). Assigns each vendor a
+    market segment; segments below min_n fold into 'Other / Emerging' so the
+    drill selector has no degenerate (N<5) quadrants. Each segment carries its
+    OWN cohort-mean cross (segment-relative, like a real per-market MQ) and a
+    `drillable` flag — false when the cohort is too flat (template-scored buckets
+    such as the 59-vendor 'Data & AI Ecosystem' have ~0 score variance, so their
+    quadrant is meaningless and the UI caveats it)."""
+    import statistics as _st
+    from collections import Counter
+    for v in vendors:
+        v["mq_segment"] = _segment_of(v.get("category"))
+    sizes = Counter(v["mq_segment"] for v in vendors)
+    for v in vendors:
+        if sizes[v["mq_segment"]] < min_n and v["mq_segment"] != "Data & AI Ecosystem (broad)":
+            v["mq_segment"] = "Other / Emerging"
+    groups = {}
+    for v in vendors:
+        groups.setdefault(v["mq_segment"], []).append(v)
+    out = []
+    for label, vs in groups.items():
+        n = len(vs)
+        exs = [v["mq_execute"] for v in vs]
+        vis = [v["mq_vision"] for v in vs]
+        tx = round(sum(vis) / n, 2)
+        ty = round(sum(exs) / n, 2)
+        var = round(_st.pstdev(exs) + _st.pstdev(vis), 2) if n > 1 else 0.0
+        counts = {"Leaders": 0, "Challengers": 0, "Visionaries": 0, "Niche Players": 0}
+        for v in vs:
+            hi_e = v["mq_execute"] >= ty
+            hi_v = v["mq_vision"] >= tx
+            counts["Leaders" if (hi_e and hi_v) else "Challengers" if hi_e
+                   else "Visionaries" if hi_v else "Niche Players"] += 1
+        out.append({
+            "label": label, "n": n, "tx": tx, "ty": ty, "var": var,
+            "skew": round(max(counts.values()) / n, 2),
+            "drillable": bool(n >= min_n and var >= var_floor),
+            "counts": counts, "tierA": sum(1 for v in vs if v.get("tier") == "A"),
+        })
+    out.sort(key=lambda s: (-s["n"], s["label"]))
+    return out
+
+
 def kpis(vendors):
     n = len(vendors)
     a = sum(1 for v in vendors if v.get("tier") == "A")
@@ -127,6 +201,7 @@ def aggregate_count(vendors, key):
 
 def render(meta, vendors, src_path):
     mq = magic_quadrant(vendors)
+    mq_segments = magic_quadrant_segments(vendors)
     by_cat = aggregate_count(vendors, "category")
     by_tier = {t: sum(1 for v in vendors if v.get("tier") == t) for t in ["A", "B", "C", "D"]}
     by_tier = {t: c for t, c in by_tier.items() if c}
@@ -152,6 +227,7 @@ def render(meta, vendors, src_path):
         "gems": [v for v in vendors if v["hidden_gem"] and v.get("tier") != "A"][:6],
         "best_fit": sorted(vendors, key=lambda v: -(v.get("bryan_score") or 0))[:6],
         "mq": mq,
+        "mq_segments": mq_segments,
         "vendors": vendors,
     }
     html = HTML_TEMPLATE.replace("/*__DATA__*/", json.dumps(payload, ensure_ascii=False))
@@ -290,14 +366,21 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     </div>
   </div>
 
-  <h3 class="sec">📊 Magic Quadrant <span class="hint">— all partners by Ability to Execute vs Completeness of Vision</span></h3>
+  <h3 class="sec">📊 Magic Quadrant <span class="hint">— all partners, or drill into a market segment</span></h3>
   <div class="panel">
+    <div class="controls" style="margin-bottom:8px">
+      <label class="sub" style="align-self:center">Drill into segment:</label>
+      <select id="mqSegSel"></select>
+      <button id="mqBack" style="display:none;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 11px;font-size:12px;cursor:pointer">← All partners</button>
+      <span id="mqCrumb" class="sub" style="align-self:center"></span>
+    </div>
     <div id="mqLegend" class="sub" style="margin-bottom:10px"></div>
     <div style="height:560px;position:relative">
       <canvas id="mqChart" style="max-height:560px"></canvas>
     </div>
-    <div class="sub" style="margin-top:12px;line-height:1.55">
-      <b style="color:var(--text)">How to read:</b> <b style="color:var(--text)">Ability to Execute</b> (vertical) = mean of Snowflake &amp; Retail/Customer scores · <b style="color:var(--text)">Completeness of Vision</b> (horizontal) = mean of AI &amp; IPO/Upside scores — both on the workbook's 0–10 scale. The quadrant cross sits at the cohort <i>average</i> of each axis, so the quadrants are relative to this partner set: <b style="color:var(--A)">Leaders</b> (high execute + vision), <b style="color:var(--accent)">Challengers</b> (execute), <b style="color:var(--gem)">Visionaries</b> (vision), <b style="color:#94a3b8">Niche Players</b> (neither). Tier-A must-sees are labelled; hover any dot for exact scores. Dots carry a tiny jitter so partners sharing a score stay visible.
+    <div id="mqCaveat" class="sub" style="margin-top:12px;line-height:1.5;color:#cfe0ff"></div>
+    <div class="sub" style="margin-top:10px;line-height:1.55">
+      <b style="color:var(--text)">How to read:</b> <b style="color:var(--text)">Ability to Execute</b> (vertical) = mean of Snowflake &amp; Retail/Customer scores · <b style="color:var(--text)">Completeness of Vision</b> (horizontal) = mean of AI &amp; IPO/Upside scores — both on the workbook's 0–10 scale. The quadrant cross sits at the cohort <i>average</i> of each axis, so the quadrants are relative to this partner set: <b style="color:var(--A)">Leaders</b> (high execute + vision), <b style="color:var(--accent)">Challengers</b> (execute), <b style="color:var(--gem)">Visionaries</b> (vision), <b style="color:#94a3b8">Niche Players</b> (neither). Tier-A must-sees are labelled; hover any dot for exact scores. Dots carry a tiny jitter so partners sharing a score stay visible. <b style="color:var(--text)">Drill-down:</b> pick a market segment to see its own quadrant, re-centred on that segment's cohort average. <b>This is Bryan's directional scouting, not an official Gartner Magic Quadrant</b> — small or template-scored segments (flagged) are exploratory only.
     </div>
   </div>
 
@@ -357,17 +440,27 @@ new Chart(document.getElementById('profChart'),{type:'radar',
   options:{plugins:{legend:{labels:{color:C.tick}}},
     scales:{r:{min:0,max:10,angleLines:{color:C.grid},grid:{color:C.grid},pointLabels:{color:C.tick,font:{size:11}},ticks:{display:false}}}}});
 
-// ----- Magic Quadrant (all partners) -----
+// ----- Magic Quadrant + taxonomy drill-down -----
 (function(){
-  const MQ=DATA.mq, V=DATA.vendors;
+  const V=DATA.vendors, SEGS=DATA.mq_segments||[];
+  const ALL={label:'All Partners',n:V.length,tx:DATA.mq.tx,ty:DATA.mq.ty,drillable:true,all:true};
+  const byLabel={}; SEGS.forEach(s=>byLabel[s.label]=s);
   const qFill={'Leaders':'rgba(52,211,153,.07)','Challengers':'rgba(41,181,232,.06)','Visionaries':'rgba(167,139,250,.06)','Niche Players':'rgba(100,116,139,.05)'};
-  const legend=document.getElementById('mqLegend');
-  if(legend) legend.innerHTML='Cross at cohort avg — Vision <b style="color:var(--text)">'+MQ.tx+'</b> · Execute <b style="color:var(--text)">'+MQ.ty+'</b>  &nbsp;·&nbsp;  '+
-    Object.entries(MQ.counts).map(([q,n])=>q+' <b style="color:var(--text)">'+n+'</b>').join('  ·  ');
+  let active=ALL, mqCross={tx:ALL.tx,ty:ALL.ty};
+  const quadOf=(v,s)=>{const he=v.mq_execute>=s.ty,hv=v.mq_vision>=s.tx;return he&&hv?'Leaders':he?'Challengers':hv?'Visionaries':'Niche Players';};
+  const vendorsIn=s=>s.all?V:V.filter(v=>v.mq_segment===s.label);
+
+  const sel=document.getElementById('mqSegSel');
+  const mkOpt=(val,txt)=>{const o=document.createElement('option');o.value=val;o.textContent=txt;sel.appendChild(o);};
+  mkOpt('All Partners','All Partners ('+V.length+')');
+  SEGS.forEach(s=>mkOpt(s.label, s.label+' ('+s.n+')'+(s.drillable?'':' — flat')));
+  const legend=document.getElementById('mqLegend'), crumb=document.getElementById('mqCrumb'),
+        back=document.getElementById('mqBack'), caveat=document.getElementById('mqCaveat');
+
   const mqPlugin={id:'mqQuad',
     beforeDraw(ch){
       const a=ch.chartArea, x=ch.scales.x, y=ch.scales.y; if(!a)return;
-      const ctx=ch.ctx, cx=x.getPixelForValue(MQ.tx), cy=y.getPixelForValue(MQ.ty);
+      const ctx=ch.ctx, cx=x.getPixelForValue(mqCross.tx), cy=y.getPixelForValue(mqCross.ty);
       ctx.save();
       ctx.fillStyle=qFill['Leaders'];      ctx.fillRect(cx,a.top,a.right-cx,cy-a.top);
       ctx.fillStyle=qFill['Challengers'];  ctx.fillRect(a.left,a.top,cx-a.left,cy-a.top);
@@ -386,14 +479,19 @@ new Chart(document.getElementById('profChart'),{type:'radar',
     afterDatasetsDraw(ch){
       const ctx=ch.ctx, x=ch.scales.x, y=ch.scales.y;
       ctx.save();ctx.font='600 10px -apple-system,BlinkMacSystemFont,sans-serif';ctx.fillStyle='rgba(232,238,255,.92)';ctx.textAlign='left';ctx.textBaseline='middle';
-      V.filter(v=>v.tier==='A').forEach(v=>ctx.fillText(' '+v.name, x.getPixelForValue(v.mq_x)+5, y.getPixelForValue(v.mq_y)));
+      let lab=vendorsIn(active).filter(v=>v.tier==='A');
+      if(!active.all && lab.length===0) lab=vendorsIn(active).slice().sort((p,q)=>(q.overall_score||0)-(p.overall_score||0)).slice(0,3);
+      lab.forEach(v=>ctx.fillText(' '+v.name, x.getPixelForValue(v.mq_x)+5, y.getPixelForValue(v.mq_y)));
       ctx.restore();
     }
   };
-  const ds=['A','B','C','D'].map(t=>({label:'Tier '+t,
-    data:V.filter(v=>v.tier===t).map(v=>({x:v.mq_x,y:v.mq_y,name:v.name,tier:v.tier,ov:v.overall_score,cat:v.category,ex:v.mq_execute,vi:v.mq_vision,q:v.mq_quadrant})),
-    backgroundColor:tierColor(t)+'cc',borderColor:tierColor(t),borderWidth:1,pointRadius:t==='A'?6:3.5,pointHoverRadius:8})).filter(d=>d.data.length);
-  new Chart(document.getElementById('mqChart'),{type:'scatter',data:{datasets:ds},
+  function datasetsFor(s){
+    const vs=vendorsIn(s);
+    return ['A','B','C','D'].map(t=>({label:'Tier '+t,
+      data:vs.filter(v=>v.tier===t).map(v=>({x:v.mq_x,y:v.mq_y,name:v.name,tier:v.tier,ov:v.overall_score,cat:v.category,ex:v.mq_execute,vi:v.mq_vision,q:quadOf(v,s)})),
+      backgroundColor:tierColor(t)+'cc',borderColor:tierColor(t),borderWidth:1,pointRadius:t==='A'?6:3.5,pointHoverRadius:8})).filter(d=>d.data.length);
+  }
+  const chart=new Chart(document.getElementById('mqChart'),{type:'scatter',data:{datasets:datasetsFor(ALL)},
     options:{maintainAspectRatio:false,animation:false,
       plugins:{legend:{labels:{color:C.tick,usePointStyle:true}},
         tooltip:{callbacks:{
@@ -403,6 +501,25 @@ new Chart(document.getElementById('profChart'),{type:'radar',
         x:{min:3,max:10,title:{display:true,text:'Completeness of Vision  →   (AI + IPO/Upside)',color:'#aab6c9',font:{weight:'700'}},ticks:{color:C.tick},grid:{color:C.grid}},
         y:{min:3,max:10,title:{display:true,text:'Ability to Execute  →   (Snowflake + Retail)',color:'#aab6c9',font:{weight:'700'}},ticks:{color:C.tick},grid:{color:C.grid}}}},
     plugins:[mqPlugin]});
+
+  function render(s){
+    active=s; mqCross={tx:s.tx,ty:s.ty};
+    chart.data.datasets=datasetsFor(s); chart.update();
+    const vs=vendorsIn(s), cc={Leaders:0,Challengers:0,Visionaries:0,'Niche Players':0};
+    vs.forEach(v=>cc[quadOf(v,s)]++);
+    legend.innerHTML=(s.all?'All '+V.length+' partners':s.n+' partners in '+s.label)+
+      ' · cross at '+(s.all?'fleet':'segment')+' avg — Vision <b style="color:var(--text)">'+s.tx+'</b> · Execute <b style="color:var(--text)">'+s.ty+'</b>  &nbsp;·&nbsp;  '+
+      Object.entries(cc).map(([q,n])=>q+' <b style="color:var(--text)">'+n+'</b>').join('  ·  ');
+    crumb.innerHTML = s.all?'' : '&nbsp; All Partners › <b style="color:var(--text)">'+s.label+'</b>';
+    back.style.display = s.all?'none':'';
+    caveat.innerHTML = s.all ? '' : (s.drillable
+      ? '<b>Segment view.</b> The cross is recomputed to this segment cohort average, so positions are relative to '+s.label+' — a Leader here may sit elsewhere on the all-partners quadrant.'+((s.n<10||s.skew>0.7)?' <b style="color:#fbbf24">Small or lopsided cohort</b> ('+s.n+' partners, '+Math.round(s.skew*100)+'% in one quadrant) — interpret with care.':'')
+      : '⚠ <b>'+s.label+' is a flat / directional cohort</b> ('+s.n+' partners with little score spread; many carry template scores). Read it as a ranked list rather than a true quadrant.');
+    if(sel.value!==(s.all?'All Partners':s.label)) sel.value=s.all?'All Partners':s.label;
+  }
+  sel.addEventListener('change',()=>render(sel.value==='All Partners'?ALL:(byLabel[sel.value]||ALL)));
+  back.addEventListener('click',()=>render(ALL));
+  render(ALL);
 })();
 
 // Table
