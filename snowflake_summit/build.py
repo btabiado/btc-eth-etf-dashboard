@@ -595,6 +595,16 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .planhint{display:block;position:absolute;left:10px;bottom:10px;z-index:6;pointer-events:none;
       background:rgba(11,16,32,.78);color:var(--muted);border-radius:8px;padding:5px 9px;font-size:11px}
   }
+  /* ---------- P1 · magic quadrant ---------- */
+  @media (max-width:640px){
+    /* Square plot fitting screen width (was a fixed 560px-tall portrait box). */
+    #mqBox{height:auto!important;aspect-ratio:1}
+    #mqChart{max-height:none!important}
+    /* Full-width "drill into niche" control + comfortable chips. */
+    #mqSegSel{flex:1 1 100%;width:100%;min-height:40px;font-size:13px}
+    #mqQuadChips{gap:8px}
+    #mqBack{min-height:40px}
+  }
 </style>
 </head>
 <body>
@@ -755,7 +765,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       </div>
       <div id="mqLegend" class="sub" style="margin-bottom:8px"></div>
       <div id="mqQuadChips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
-      <div style="height:560px;position:relative">
+      <div id="mqBox" style="height:560px;position:relative">
         <canvas id="mqChart" style="max-height:560px"></canvas>
       </div>
       <div id="mqCaveat" class="sub" style="margin-top:12px;line-height:1.5;color:#cfe0ff"></div>
@@ -1111,19 +1121,37 @@ draw();
       ctx.strokeStyle='#2c3e60';ctx.lineWidth=1;ctx.setLineDash([5,4]);
       ctx.beginPath();ctx.moveTo(cx,a.top);ctx.lineTo(cx,a.bottom);ctx.moveTo(a.left,cy);ctx.lineTo(a.right,cy);ctx.stroke();
       ctx.setLineDash([]);
-      ctx.font='800 12px -apple-system,BlinkMacSystemFont,sans-serif';
-      ctx.fillStyle='rgba(52,211,153,.85)'; ctx.textAlign='right';ctx.textBaseline='top';   ctx.fillText('LEADERS',a.right-10,a.top+8);
-      ctx.fillStyle='rgba(41,181,232,.85)'; ctx.textAlign='left'; ctx.textBaseline='top';    ctx.fillText('CHALLENGERS',a.left+10,a.top+8);
-      ctx.fillStyle='rgba(167,139,250,.9)'; ctx.textAlign='right';ctx.textBaseline='bottom'; ctx.fillText('VISIONARIES',a.right-10,a.bottom-8);
-      ctx.fillStyle='rgba(148,163,184,.95)';ctx.textAlign='left'; ctx.textBaseline='bottom'; ctx.fillText('NICHE PLAYERS',a.left+10,a.bottom-8);
+      // Phones: pin the quadrant corner labels tighter, smaller and fainter so
+      // they recede behind the dots. Desktop keeps 12px / full opacity / 10-8 inset.
+      var cf=IS_MOBILE?9:12, ca=IS_MOBILE?0.45:1, ci=IS_MOBILE?4:10, cj=IS_MOBILE?4:8;
+      ctx.font='800 '+cf+'px -apple-system,BlinkMacSystemFont,sans-serif';
+      ctx.fillStyle='rgba(52,211,153,'+(0.85*ca)+')'; ctx.textAlign='right';ctx.textBaseline='top';   ctx.fillText('LEADERS',a.right-ci,a.top+cj);
+      ctx.fillStyle='rgba(41,181,232,'+(0.85*ca)+')'; ctx.textAlign='left'; ctx.textBaseline='top';    ctx.fillText('CHALLENGERS',a.left+ci,a.top+cj);
+      ctx.fillStyle='rgba(167,139,250,'+(0.9*ca)+')'; ctx.textAlign='right';ctx.textBaseline='bottom'; ctx.fillText('VISIONARIES',a.right-ci,a.bottom-cj);
+      ctx.fillStyle='rgba(148,163,184,'+(0.95*ca)+')';ctx.textAlign='left'; ctx.textBaseline='bottom'; ctx.fillText('NICHE PLAYERS',a.left+ci,a.bottom-cj);
       ctx.restore();
     },
     afterDatasetsDraw(ch){
-      const ctx=ch.ctx, x=ch.scales.x, y=ch.scales.y;
-      ctx.save();ctx.font='600 10px -apple-system,BlinkMacSystemFont,sans-serif';ctx.fillStyle='rgba(232,238,255,.92)';ctx.textAlign='left';ctx.textBaseline='middle';
+      const ctx=ch.ctx, x=ch.scales.x, y=ch.scales.y, a=ch.chartArea;
+      ctx.save();ctx.font='600 '+(IS_MOBILE?9:10)+'px -apple-system,BlinkMacSystemFont,sans-serif';ctx.fillStyle='rgba(232,238,255,.92)';ctx.textBaseline='middle';
       let lab=vendorsIn(active).filter(v=>v.tier==='A' && visQ.has(quadOf(v,active)));
       if(!active.all && lab.length===0) lab=vendorsIn(active).filter(v=>visQ.has(quadOf(v,active))).sort((p,q)=>(q.overall_score||0)-(p.overall_score||0)).slice(0,3);
-      lab.forEach(v=>ctx.fillText(' '+v.name, x.getPixelForValue(v.mq_x)+5, y.getPixelForValue(v.mq_y)));
+      if(IS_MOBILE){
+        // Collision-avoid: draw highest-overall first and skip any label that would
+        // overlap one already placed (right-edge labels flip left so they can't clip).
+        // Unlabeled dots stay tappable for their detail — keeps the Leaders cluster legible.
+        var drawn=[], lh=11;
+        lab.slice().sort((p,q)=>(q.overall_score||0)-(p.overall_score||0)).forEach(function(v){
+          var px=x.getPixelForValue(v.mq_x),py=y.getPixelForValue(v.mq_y),w=ctx.measureText(v.name).width;
+          var left=!!(a&&px+6+w>a.right), rx=left?px-6-w:px+6, ry=py-lh/2, k;
+          for(k=0;k<drawn.length;k++){var d=drawn[k];if(rx<d.x+d.w+3&&rx+w+3>d.x&&ry<d.y+d.h+2&&ry+lh+2>d.y)return;}
+          drawn.push({x:rx,y:ry,w:w,h:lh});
+          ctx.textAlign=left?'right':'left';ctx.fillText(left?(v.name+' '):(' '+v.name),left?px-6:px+6,py);
+        });
+      } else {
+        ctx.textAlign='left';
+        lab.forEach(v=>ctx.fillText(' '+v.name, x.getPixelForValue(v.mq_x)+5, y.getPixelForValue(v.mq_y)));
+      }
       ctx.restore();
     }
   };
@@ -1137,6 +1165,10 @@ draw();
   var mqLo=Math.max(0,Math.floor(Math.min.apply(null,mqVals.length?mqVals:[3])));
   const chart=new Chart(document.getElementById('mqChart'),{type:'scatter',data:{datasets:datasetsFor(ALL)},
     options:{maintainAspectRatio:false,animation:false,
+      // Phones: tap a dot to open its full detail sheet (labels are sparse on
+      // mobile, so this is how you identify an unlabeled dot). Desktop unchanged.
+      onClick:IS_MOBILE?function(e,els,ch){if(els&&els.length){var d=ch.data.datasets[els[0].datasetIndex].data[els[0].index];if(d&&d.name&&window.summitOpenVendor)window.summitOpenVendor(d.name);}}:undefined,
+      layout:{padding:{right:IS_MOBILE?12:0}},
       plugins:{legend:{labels:{color:C.tick,usePointStyle:true}},
         tooltip:{displayColors:false,padding:16,titleFont:{size:18,weight:'700'},bodyFont:{size:16},bodySpacing:7,callbacks:{
           title:c=>c[0].raw.name,
@@ -1346,6 +1378,7 @@ draw();
     lastFocus=document.activeElement; m.classList.add('on'); document.body.style.overflow='hidden'; var xb=m.querySelector('.x'); (xb||sheet).focus();
   }
   function close(){m.classList.remove('on'); document.body.style.overflow=''; if(lastFocus&&lastFocus.focus){try{lastFocus.focus();}catch(_){}} lastFocus=null;}
+  window.summitOpenVendor=open; // let the Magic-Quadrant dots (and other views) open the detail sheet
   m.addEventListener('click',function(e){if(e.target===m||e.target.classList.contains('x'))close();});
   document.addEventListener('keydown',function(e){
     if(!m.classList.contains('on'))return;
