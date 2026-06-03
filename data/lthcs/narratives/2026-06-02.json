@@ -452,8 +452,8 @@
     },
     {
       "ticker": "EA",
-      "todays_take": "EA requires Structural Review at 39.5 (+0.1 over 30 days), supported by Thesis Integrity at 49.0.",
-      "why_changed": "Score is at 39.5 (drift over 1d +0.2); no prior snapshot available for component-delta analysis.",
+      "todays_take": "EA requires Structural Review at 43.0 (+0.1 over 30 days), supported by Thesis Integrity at 66.5.",
+      "why_changed": "Score is at 43.0 (drift over 1d +0.2); no prior snapshot available for component-delta analysis.",
       "why_not_to_sell": "Structural concerns: Financial Evolution at 32.0 is well below the universe median, and Adoption Momentum at 34.5 is not compensating. Position should be reassessed against the original thesis.",
       "what_would_break": "Score is already in structural review territory. A move below 30 on Financial Evolution, combined with a continued drift below 40 in the composite, would force a position exit decision.",
       "confidence_level": "high"
@@ -644,7 +644,7 @@
     },
     {
       "ticker": "JNJ",
-      "todays_take": "JNJ requires Structural Review at 44.9 (-9.1 over 30 days), supported by Thesis Integrity at 61.9.",
+      "todays_take": "JNJ requires Structural Review at 44.9 (-9.1 over 30 days), supported by Thesis Integrity at 72.6.",
       "why_changed": "Score is at 44.9 (drift over 1d +0.4); no prior snapshot available for component-delta analysis.",
       "why_not_to_sell": "Structural concerns: Adoption Momentum at 30.8 is well below the universe median, and Demand Environment at 44.6 is not compensating. Position should be reassessed against the original thesis.",
       "what_would_break": "Score is already in structural review territory. A move below 30 on Adoption Momentum, combined with a continued drift below 40 in the composite, would force a position exit decision.",
@@ -660,7 +660,7 @@
     },
     {
       "ticker": "KDP",
-      "todays_take": "KDP is showing Weakening at 51.6 (-3.9 over 30 days), supported by Institutional Confidence at 63.9.",
+      "todays_take": "KDP is showing Weakening at 51.6 (-3.9 over 30 days), supported by Thesis Integrity at 68.7.",
       "why_changed": "Score is at 51.6 (drift over 1d +1.2); no prior snapshot available for component-delta analysis.",
       "why_not_to_sell": "Structural concerns: Demand Environment at 43.0 is well below the universe median, and Financial Evolution at 48.5 is not compensating. Position should be reassessed against the original thesis.",
       "what_would_break": "A sustained drop in Demand Environment below 33, or a Structural Review composite move below 50, would force a structural review.",
@@ -1188,7 +1188,7 @@
     },
     {
       "ticker": "TSLA",
-      "todays_take": "TSLA requires Structural Review at 28.7 (+2.7 over 30 days), supported by Thesis Integrity at 67.8.",
+      "todays_take": "TSLA requires Structural Review at 28.7 (+2.7 over 30 days), supported by Thesis Integrity at 50.3.",
       "why_changed": "Score is at 28.7 (drift over 1d -2.7); no prior snapshot available for component-delta analysis.",
       "why_not_to_sell": "Structural concerns: Adoption Momentum at 5.0 is well below the universe median, and Institutional Confidence at 32.2 is not compensating. Position should be reassessed against the original thesis.",
       "what_would_break": "Score is already in structural review territory. A move below 30 on Adoption Momentum, combined with a continued drift below 40 in the composite, would force a position exit decision.",

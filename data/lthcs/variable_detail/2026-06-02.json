@@ -1123,14 +1123,14 @@
         "sentiment_subscore_raw": 63.888888888888886,
         "confidence_blend": 1.0,
         "has_sec_8k": false,
-        "has_yahoo_earnings": true,
+        "has_yahoo_earnings": false,
         "sec_8k_score": null,
-        "yahoo_earnings_score": 0.4,
-        "events_score_raw": 70.0,
+        "yahoo_earnings_score": null,
+        "events_score_raw": null,
         "events_weight": 0.25,
         "base_sub_score": 63.9
       },
-      "sub_score": 65.4,
+      "sub_score": 63.9,
       "data_quality": {
         "has_sentiment": true,
         "article_count_sufficient": true,
@@ -1138,10 +1138,6 @@
         "days_since_scored": 0,
         "last_scored": "2026-06-02",
         "source": "finnhub_recommendation",
-        "has_events_refinement": true,
-        "events_refinement_sources": [
-          "yahoo_earnings"
-        ],
         "has_sector_rss": false
       }
     },
@@ -7917,7 +7913,7 @@
           "yahoo_earnings"
         ],
         "has_sector_rss": true,
-        "sector_rss_event_count": 8,
+        "sector_rss_event_count": 9,
         "sector_rss_sectors": [
           "energy"
         ]
@@ -9670,7 +9666,7 @@
           "yahoo_earnings"
         ],
         "has_sector_rss": true,
-        "sector_rss_event_count": 8,
+        "sector_rss_event_count": 9,
         "sector_rss_sectors": [
           "energy"
         ]
@@ -11217,12 +11213,12 @@
         "has_sec_8k": false,
         "has_yahoo_earnings": true,
         "sec_8k_score": null,
-        "yahoo_earnings_score": -0.7,
-        "events_score_raw": 15.0,
+        "yahoo_earnings_score": 0.7,
+        "events_score_raw": 85.0,
         "events_weight": 0.25,
         "base_sub_score": 60.3
       },
-      "sub_score": 49.0,
+      "sub_score": 66.5,
       "data_quality": {
         "has_sentiment": true,
         "article_count_sufficient": true,
@@ -13358,14 +13354,14 @@
         "sentiment_subscore_raw": 77.56410256410257,
         "confidence_blend": 1.0,
         "has_sec_8k": false,
-        "has_yahoo_earnings": false,
+        "has_yahoo_earnings": true,
         "sec_8k_score": null,
-        "yahoo_earnings_score": null,
-        "events_score_raw": null,
+        "yahoo_earnings_score": 0.4,
+        "events_score_raw": 70.0,
         "events_weight": 0.25,
         "base_sub_score": 77.6
       },
-      "sub_score": 77.6,
+      "sub_score": 75.7,
       "data_quality": {
         "has_sentiment": true,
         "article_count_sufficient": true,
@@ -13373,6 +13369,10 @@
         "days_since_scored": 0,
         "last_scored": "2026-06-02",
         "source": "finnhub_recommendation",
+        "has_events_refinement": true,
+        "events_refinement_sources": [
+          "yahoo_earnings"
+        ],
         "has_sector_rss": true,
         "sector_rss_event_count": 1,
         "sector_rss_sectors": [
@@ -14543,13 +14543,13 @@
         "confidence_blend": 1.0,
         "has_sec_8k": true,
         "has_yahoo_earnings": true,
-        "sec_8k_score": -0.19999999999999998,
+        "sec_8k_score": -0.17142857142857143,
         "yahoo_earnings_score": 0.4,
-        "events_score_raw": 55.0,
+        "events_score_raw": 55.71,
         "events_weight": 0.25,
         "base_sub_score": 68.2
       },
-      "sub_score": 64.9,
+      "sub_score": 65.1,
       "data_quality": {
         "has_sentiment": true,
         "article_count_sufficient": true,
@@ -15915,14 +15915,14 @@
         "sentiment_subscore_raw": 72.58064516129032,
         "confidence_blend": 1.0,
         "has_sec_8k": false,
-        "has_yahoo_earnings": true,
+        "has_yahoo_earnings": false,
         "sec_8k_score": null,
-        "yahoo_earnings_score": -0.4,
-        "events_score_raw": 30.0,
+        "yahoo_earnings_score": null,
+        "events_score_raw": null,
         "events_weight": 0.25,
         "base_sub_score": 72.6
       },
-      "sub_score": 61.9,
+      "sub_score": 72.6,
       "data_quality": {
         "has_sentiment": true,
         "article_count_sufficient": true,
@@ -15930,10 +15930,6 @@
         "days_since_scored": 0,
         "last_scored": "2026-06-02",
         "source": "finnhub_recommendation",
-        "has_events_refinement": true,
-        "events_refinement_sources": [
-          "yahoo_earnings"
-        ],
         "has_sector_rss": true,
         "sector_rss_event_count": 1,
         "sector_rss_sectors": [
@@ -16318,12 +16314,12 @@
         "has_sec_8k": false,
         "has_yahoo_earnings": true,
         "sec_8k_score": null,
-        "yahoo_earnings_score": -0.7,
-        "events_score_raw": 15.0,
+        "yahoo_earnings_score": 0.4,
+        "events_score_raw": 70.0,
         "events_weight": 0.25,
         "base_sub_score": 68.2
       },
-      "sub_score": 54.9,
+      "sub_score": 68.7,
       "data_quality": {
         "has_sentiment": true,
         "article_count_sufficient": true,
@@ -22199,14 +22195,14 @@
         "sentiment_subscore_raw": 76.29310344827587,
         "confidence_blend": 1.0,
         "has_sec_8k": false,
-        "has_yahoo_earnings": false,
+        "has_yahoo_earnings": true,
         "sec_8k_score": null,
-        "yahoo_earnings_score": null,
-        "events_score_raw": null,
+        "yahoo_earnings_score": -0.4,
+        "events_score_raw": 30.0,
         "events_weight": 0.25,
         "base_sub_score": 76.3
       },
-      "sub_score": 76.3,
+      "sub_score": 64.7,
       "data_quality": {
         "has_sentiment": true,
         "article_count_sufficient": true,
@@ -22214,6 +22210,10 @@
         "days_since_scored": 0,
         "last_scored": "2026-06-02",
         "source": "finnhub_recommendation",
+        "has_events_refinement": true,
+        "events_refinement_sources": [
+          "yahoo_earnings"
+        ],
         "has_sector_rss": false
       }
     },
@@ -29241,12 +29241,12 @@
         "has_sec_8k": false,
         "has_yahoo_earnings": true,
         "sec_8k_score": null,
-        "yahoo_earnings_score": 0.7,
-        "events_score_raw": 85.0,
+        "yahoo_earnings_score": -0.7,
+        "events_score_raw": 15.0,
         "events_weight": 0.25,
         "base_sub_score": 62.1
       },
-      "sub_score": 67.8,
+      "sub_score": 50.3,
       "data_quality": {
         "has_sentiment": true,
         "article_count_sufficient": true,
@@ -31397,14 +31397,14 @@
         "sentiment_subscore_raw": 67.85714285714286,
         "confidence_blend": 1.0,
         "has_sec_8k": false,
-        "has_yahoo_earnings": false,
+        "has_yahoo_earnings": true,
         "sec_8k_score": null,
-        "yahoo_earnings_score": null,
-        "events_score_raw": null,
+        "yahoo_earnings_score": 0.4,
+        "events_score_raw": 70.0,
         "events_weight": 0.25,
         "base_sub_score": 67.9
       },
-      "sub_score": 67.9,
+      "sub_score": 68.4,
       "data_quality": {
         "has_sentiment": true,
         "article_count_sufficient": true,
@@ -31412,6 +31412,10 @@
         "days_since_scored": 0,
         "last_scored": "2026-06-02",
         "source": "finnhub_recommendation",
+        "has_events_refinement": true,
+        "events_refinement_sources": [
+          "yahoo_earnings"
+        ],
         "has_sector_rss": false
       }
     },
@@ -32574,7 +32578,7 @@
           "yahoo_earnings"
         ],
         "has_sector_rss": true,
-        "sector_rss_event_count": 8,
+        "sector_rss_event_count": 9,
         "sector_rss_sectors": [
           "energy"
         ]
@@ -35109,7 +35113,7 @@
           "yahoo_earnings"
         ],
         "has_sector_rss": true,
-        "sector_rss_event_count": 8,
+        "sector_rss_event_count": 9,
         "sector_rss_sectors": [
           "energy"
         ]
@@ -38424,7 +38428,7 @@
           "yahoo_earnings"
         ],
         "has_sector_rss": true,
-        "sector_rss_event_count": 8,
+        "sector_rss_event_count": 9,
         "sector_rss_sectors": [
           "energy"
         ]
@@ -40177,7 +40181,7 @@
           "yahoo_earnings"
         ],
         "has_sector_rss": true,
-        "sector_rss_event_count": 8,
+        "sector_rss_event_count": 9,
         "sector_rss_sectors": [
           "energy"
         ]
@@ -40566,7 +40570,7 @@
         "last_scored": "2026-06-02",
         "source": "finnhub_recommendation",
         "has_sector_rss": true,
-        "sector_rss_event_count": 8,
+        "sector_rss_event_count": 9,
         "sector_rss_sectors": [
           "energy"
         ]
@@ -41745,7 +41749,7 @@
           "yahoo_earnings"
         ],
         "has_sector_rss": true,
-        "sector_rss_event_count": 8,
+        "sector_rss_event_count": 9,
         "sector_rss_sectors": [
           "energy"
         ]
