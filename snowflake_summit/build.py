@@ -400,6 +400,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <script>
 const DATA = /*__DATA__*/;
 const fmt = n => (n===null||n===undefined||n==='')?"—":n;
+const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const tierClass = t => ({A:'tA',B:'tB',C:'tC',D:'tD'})[t]||'tC';
 
 document.getElementById('subhead').textContent =
@@ -414,10 +415,10 @@ function scoreChips(v){
 }
 function card(v){
   return `<div class="card2 ${v.hidden_gem?'':''}"><div class="rk">${v.rank}</div>
-    <div class="nm">${v.name} <span class="tag ${tierClass(v.tier)}">${v.tier}</span> <span class="tag tNi">${fmt(v.niche)}</span></div>
-    <div class="ct">${v.category} · booth ${fmt(v.booth)}</div>
+    <div class="nm">${esc(v.name)} <span class="tag ${tierClass(v.tier)}">${v.tier}</span> <span class="tag tNi">${esc(fmt(v.niche))}</span></div>
+    <div class="ct">${esc(v.category)} · booth ${fmt(v.booth)}</div>
     <div class="scores">${scoreChips(v)}</div>
-    <div class="ovr"><b>${fmt(v.overall_score)}</b><span>/ 10 overall${v.company_type?(' · '+v.company_type):''}</span></div></div>`;
+    <div class="ovr"><b>${fmt(v.overall_score)}</b><span>/ 10 overall${v.company_type?(' · '+esc(v.company_type)):''}</span></div></div>`;
 }
 document.getElementById('mustsee').innerHTML = DATA.must_see.map(card).join('');
 document.getElementById('gems').innerHTML = DATA.gems.length?DATA.gems.map(card).join(''):'<div class="sub">None above threshold.</div>';
@@ -469,8 +470,8 @@ function draw(){
   tbody.innerHTML=r.map(v=>{
     const w=Math.round(((v.overall_score||0)/10)*54)+6;
     return `<tr class="${v.hidden_gem?'gem-row':''}">
-      <td class="num">${v.rank}</td><td class="name">${v.name}</td><td>${fmt(v.booth)}</td>
-      <td><span class="tag tNi">${fmt(v.niche)}</span></td><td>${fmt(v.category)}</td><td>${fmt(v.company_type)}</td>
+      <td class="num">${v.rank}</td><td class="name">${esc(v.name)}</td><td>${fmt(v.booth)}</td>
+      <td><span class="tag tNi">${esc(fmt(v.niche))}</span></td><td>${esc(fmt(v.category))}</td><td>${esc(fmt(v.company_type))}</td>
       <td class="num">${fmt(v.snowflake_score)}</td><td class="num">${fmt(v.ai_score)}</td>
       <td class="num">${fmt(v.retail_score)}</td><td class="num">${fmt(v.ipo_score)}</td><td class="num">${fmt(v.bryan_score)}</td>
       <td class="num"><span class="ovrbar" style="width:${w}px;background:${tierColor(v.tier)}"></span><b>${fmt(v.overall_score)}</b></td>
@@ -591,13 +592,13 @@ draw();
     const vs=vendorsIn(s), cc={Leaders:0,Challengers:0,Visionaries:0,'Niche Players':0};
     vs.forEach(v=>cc[quadOf(v,s)]++);
     renderChips(cc);
-    legend.innerHTML=(s.all?'All '+V.length+' partners':s.n+' partners in '+s.label)+
+    legend.innerHTML=(s.all?'All '+V.length+' partners':s.n+' partners in '+esc(s.label))+
       ' · cross at '+(s.all?'fleet':'niche')+' avg — Vision <b style="color:var(--text)">'+s.tx+'</b> · Execute <b style="color:var(--text)">'+s.ty+'</b> &nbsp;·&nbsp; <span style="color:var(--muted)">click a quadrant chip to show/hide it</span>';
-    crumb.innerHTML = s.all?'' : '&nbsp; All Partners › <b style="color:var(--text)">'+s.label+'</b>';
+    crumb.innerHTML = s.all?'' : '&nbsp; All Partners › <b style="color:var(--text)">'+esc(s.label)+'</b>';
     back.style.display = s.all?'none':'';
     caveat.innerHTML = s.all ? '' : (s.drillable
-      ? '<b>Niche view.</b> The cross is recomputed to this niche cohort average, so positions are relative to '+s.label+' — a Leader here may sit elsewhere on the all-partners quadrant.'+((s.n<10||s.skew>0.7)?' <b style="color:#fbbf24">Small or lopsided cohort</b> ('+s.n+' partners, '+Math.round(s.skew*100)+'% in one quadrant) — interpret with care.':'')
-      : '⚠ <b>'+s.label+' is a flat / directional cohort</b> ('+s.n+' partners with little score spread; many carry template scores). Read it as a ranked list rather than a true quadrant.');
+      ? '<b>Niche view.</b> The cross is recomputed to this niche cohort average, so positions are relative to '+esc(s.label)+' — a Leader here may sit elsewhere on the all-partners quadrant.'+((s.n<10||s.skew>0.7)?' <b style="color:#fbbf24">Small or lopsided cohort</b> ('+s.n+' partners, '+Math.round(s.skew*100)+'% in one quadrant) — interpret with care.':'')
+      : '⚠ <b>'+esc(s.label)+' is a flat / directional cohort</b> ('+s.n+' partners with little score spread; many carry template scores). Read it as a ranked list rather than a true quadrant.');
     if(sel.value!==(s.all?'All Partners':s.label)) sel.value=s.all?'All Partners':s.label;
   }
   sel.addEventListener('change',()=>render(sel.value==='All Partners'?ALL:(byLabel[sel.value]||ALL)));
