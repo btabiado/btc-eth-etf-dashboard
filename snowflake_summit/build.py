@@ -251,7 +251,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .ovr b{font-size:22px;color:#fff}.ovr span{font-size:10.5px;color:var(--muted)}
   .tag{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:700}
   .tA{background:rgba(52,211,153,.16);color:var(--A)}.tB{background:rgba(251,191,36,.16);color:var(--B)}
-  .tC{background:rgba(100,116,139,.2);color:#aab6c9}.tD{background:rgba(100,116,139,.2);color:#aab6c9}
+  .tC{background:rgba(96,165,250,.18);color:#93c5fd}.tD{background:rgba(96,165,250,.18);color:#93c5fd}
   .tNi{background:rgba(41,181,232,.16);color:#7fd6f5;border:1px solid rgba(41,181,232,.3)}
   /* Print / Save-as-PDF: keep the dark theme (so the canvas charts render as on
      screen), hide interactive controls, and expand the table so the WHOLE
@@ -305,6 +305,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <div class="sub" id="subhead"></div>
     </div>
     <a class="dl" href="../" style="margin-left:auto;background:transparent;border-color:var(--border);color:var(--muted)" title="Back to the main dashboard">← Main dashboard</a>
+    <a class="dl" href="#mq" style="margin-left:0">📊 Magic Quadrant</a>
     <a class="dl" href="Snowflake_Summit_2026_Master_Partner_Scouting.xlsx" download style="margin-left:0">⬇ Download source spreadsheet</a>
     <button class="dl no-print" id="pdfBtn" type="button" style="margin-left:0;cursor:pointer" title="Print the whole dashboard or save it as a PDF">⬇ Download PDF</button>
   </div>
@@ -359,7 +360,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     </div>
   </div>
 
-  <h3 class="sec">📊 Magic Quadrant <span class="hint">— all partners, or drill into a niche</span></h3>
+  <h3 class="sec" id="mq">📊 Magic Quadrant <span class="hint">— all partners, or drill into a niche</span></h3>
   <div class="panel">
     <div class="controls" style="margin-bottom:8px">
       <label class="sub" style="align-self:center">Drill into niche:</label>
@@ -367,7 +368,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <button id="mqBack" type="button" style="display:none;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 11px;font-size:12px;cursor:pointer">← All partners</button>
       <span id="mqCrumb" class="sub" style="align-self:center"></span>
     </div>
-    <div id="mqLegend" class="sub" style="margin-bottom:10px"></div>
+    <div id="mqLegend" class="sub" style="margin-bottom:8px"></div>
+    <div id="mqQuadChips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
     <div style="height:560px;position:relative">
       <canvas id="mqChart" style="max-height:560px"></canvas>
     </div>
@@ -407,7 +409,7 @@ document.getElementById('gems').innerHTML = DATA.gems.length?DATA.gems.map(card)
 document.getElementById('bestfit').innerHTML = DATA.best_fit.map(card).join('');
 
 const C={grid:'#243352',tick:'#8da2c8'};
-const tierColor=t=>({A:'#34d399',B:'#fbbf24',C:'#64748b',D:'#475569'})[t]||'#64748b';
+const tierColor=t=>({A:'#34d399',B:'#fbbf24',C:'#60a5fa',D:'#3b82f6'})[t]||'#60a5fa';
 
 new Chart(document.getElementById('topChart'),{type:'bar',
   data:{labels:DATA.top15.map(v=>v.name),
@@ -478,6 +480,16 @@ draw();
   SEGS.forEach(s=>mkOpt(s.label, s.label+' ('+s.n+')'+(s.drillable?'':' — flat')));
   const legend=document.getElementById('mqLegend'), crumb=document.getElementById('mqCrumb'),
         back=document.getElementById('mqBack'), caveat=document.getElementById('mqCaveat');
+  // Quadrant filter chips — show/hide each quadrant's dots (same cross; a visual
+  // filter, NOT a re-quadrant). Niche Players hidden by default for a cleaner view.
+  const QUADS=['Leaders','Challengers','Visionaries','Niche Players'];
+  const qDot={'Leaders':'#34d399','Challengers':'#29b5e8','Visionaries':'#a78bfa','Niche Players':'#64748b'};
+  let visQ=new Set(['Leaders','Challengers','Visionaries']);
+  const chipsEl=document.getElementById('mqQuadChips');
+  function renderChips(cc){
+    chipsEl.innerHTML=QUADS.map(function(q){var on=visQ.has(q);return '<button type="button" data-q="'+q+'" title="Show/hide '+q+'" style="display:inline-flex;align-items:center;gap:6px;background:'+(on?'var(--panel2)':'transparent')+';border:1px solid '+(on?qDot[q]:'var(--border)')+';color:'+(on?'var(--text)':'var(--muted)')+';border-radius:14px;padding:4px 11px;font-size:12px;cursor:pointer;opacity:'+(on?'1':'.55')+'"><span style="width:9px;height:9px;border-radius:50%;background:'+qDot[q]+';display:inline-block"></span>'+q+' <b style="color:'+(on?'var(--text)':'var(--muted)')+'">'+(cc[q]||0)+'</b></button>';}).join('');
+    chipsEl.querySelectorAll('button').forEach(function(b){b.onclick=function(){var q=this.dataset.q; if(visQ.has(q))visQ.delete(q); else visQ.add(q); render(active);};});
+  }
   const mqPlugin={id:'mqQuad',
     beforeDraw(ch){
       const a=ch.chartArea, x=ch.scales.x, y=ch.scales.y; if(!a)return;
@@ -500,8 +512,8 @@ draw();
     afterDatasetsDraw(ch){
       const ctx=ch.ctx, x=ch.scales.x, y=ch.scales.y;
       ctx.save();ctx.font='600 10px -apple-system,BlinkMacSystemFont,sans-serif';ctx.fillStyle='rgba(232,238,255,.92)';ctx.textAlign='left';ctx.textBaseline='middle';
-      let lab=vendorsIn(active).filter(v=>v.tier==='A');
-      if(!active.all && lab.length===0) lab=vendorsIn(active).slice().sort((p,q)=>(q.overall_score||0)-(p.overall_score||0)).slice(0,3);
+      let lab=vendorsIn(active).filter(v=>v.tier==='A' && visQ.has(quadOf(v,active)));
+      if(!active.all && lab.length===0) lab=vendorsIn(active).filter(v=>visQ.has(quadOf(v,active))).sort((p,q)=>(q.overall_score||0)-(p.overall_score||0)).slice(0,3);
       lab.forEach(v=>ctx.fillText(' '+v.name, x.getPixelForValue(v.mq_x)+5, y.getPixelForValue(v.mq_y)));
       ctx.restore();
     }
@@ -509,7 +521,7 @@ draw();
   function datasetsFor(s){
     const vs=vendorsIn(s);
     return ['A','B','C','D'].map(t=>({label:'Tier '+t,
-      data:vs.filter(v=>v.tier===t).map(v=>({x:v.mq_x,y:v.mq_y,name:v.name,tier:v.tier,ov:v.overall_score,cat:v.category,ex:v.mq_execute,vi:v.mq_vision,q:quadOf(v,s)})),
+      data:vs.filter(v=>v.tier===t && visQ.has(quadOf(v,s))).map(v=>({x:v.mq_x,y:v.mq_y,name:v.name,tier:v.tier,ov:v.overall_score,cat:v.category,ex:v.mq_execute,vi:v.mq_vision,q:quadOf(v,s)})),
       backgroundColor:tierColor(t)+'cc',borderColor:tierColor(t),borderWidth:1,pointRadius:t==='A'?6:3.5,pointHoverRadius:8})).filter(d=>d.data.length);
   }
   const chart=new Chart(document.getElementById('mqChart'),{type:'scatter',data:{datasets:datasetsFor(ALL)},
@@ -527,9 +539,9 @@ draw();
     chart.data.datasets=datasetsFor(s); chart.update();
     const vs=vendorsIn(s), cc={Leaders:0,Challengers:0,Visionaries:0,'Niche Players':0};
     vs.forEach(v=>cc[quadOf(v,s)]++);
+    renderChips(cc);
     legend.innerHTML=(s.all?'All '+V.length+' partners':s.n+' partners in '+s.label)+
-      ' · cross at '+(s.all?'fleet':'niche')+' avg — Vision <b style="color:var(--text)">'+s.tx+'</b> · Execute <b style="color:var(--text)">'+s.ty+'</b>  &nbsp;·&nbsp;  '+
-      Object.entries(cc).map(([q,n])=>q+' <b style="color:var(--text)">'+n+'</b>').join('  ·  ');
+      ' · cross at '+(s.all?'fleet':'niche')+' avg — Vision <b style="color:var(--text)">'+s.tx+'</b> · Execute <b style="color:var(--text)">'+s.ty+'</b> &nbsp;·&nbsp; <span style="color:var(--muted)">click a quadrant chip to show/hide it</span>';
     crumb.innerHTML = s.all?'' : '&nbsp; All Partners › <b style="color:var(--text)">'+s.label+'</b>';
     back.style.display = s.all?'none':'';
     caveat.innerHTML = s.all ? '' : (s.drillable
