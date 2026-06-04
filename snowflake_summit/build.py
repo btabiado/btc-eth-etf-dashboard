@@ -121,8 +121,8 @@ def magic_quadrant_segments(vendors, min_n=5, var_floor=1.0):
     workbook's own `niche` taxonomy. Niches below min_n fold into 'Other' so the
     selector has no degenerate quadrants. Each niche gets its OWN cohort-mean
     cross (segment-relative). `drillable` is false when the cohort is too flat
-    (var < var_floor) — e.g. the ~57-vendor 'Data Ecosystem' bucket whose
-    template scores give ~0 variance — so the UI caveats it as a ranked list."""
+    (var < var_floor) — e.g. a large template-scored niche bucket whose scores
+    give ~0 variance — so the UI caveats it as a ranked list."""
     import statistics as _st
     from collections import Counter
     for v in vendors:
@@ -205,7 +205,7 @@ def render(meta, vendors, src_path):
         "profile_a": profile(tierA),
         "top15": vendors[:15],
         "must_see": tierA,
-        "gems": [v for v in vendors if v["hidden_gem"] and v.get("tier") != "A"][:6],
+        "gems": [v for v in vendors if v["hidden_gem"]][:6],
         "best_fit": sorted(vendors, key=lambda v: -(v.get("bryan_score") or 0))[:6],
         "mq": mq,
         "mq_segments": mq_segments,
@@ -639,7 +639,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <div class="logo">📊</div>
       <div>
         <h1>Snowflake Summit 2026 — Magic Quadrant</h1>
-        <div class="sub">All 197 partners, or drill into a niche · its own window</div>
+        <div class="sub" id="mqsub">drill into a niche · its own window</div>
       </div>
       <span class="zoomctl" title="Zoom" style="margin-left:auto"><button type="button" class="zbtn" data-zoom="out" aria-label="Zoom out">🔍−</button><span class="zlevel">100%</span><button type="button" class="zbtn" data-zoom="in" aria-label="Zoom in">🔍+</button></span>
       <button type="button" class="infobtn no-print scoreInfoTrigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="scorePop" title="How the scores are calculated" style="margin-left:14px">ⓘ Scoring</button>
@@ -721,6 +721,8 @@ if(_view==='news'){
 }else if(_view==='mq'){
   document.body.classList.add('mqmode');
   document.title='Magic Quadrant — Snowflake Summit 2026';
+  var _mqsub=document.getElementById('mqsub');
+  if(_mqsub) _mqsub.textContent=`All ${DATA.vendors.length} partners, or drill into a niche · its own window`;
 }else if(_view==='map'){
   document.body.classList.add('mapmode');
   document.title='Basecamp Floor Map — Snowflake Summit 2026';
@@ -746,7 +748,7 @@ function scoreChips(v){
   return items.map(([l,x])=>`<span class="schip">${l} <b>${fmt(x)}</b></span>`).join('');
 }
 function card(v){
-  return `<div class="card2 ${v.hidden_gem?'':''}" data-v="${esc(v.name)}" tabindex="0" role="button" aria-label="View company detail for ${esc(v.name)}" style="cursor:pointer" title="Click for full company detail"><div class="rk">${v.rank}</div>
+  return `<div class="card2" data-v="${esc(v.name)}" tabindex="0" role="button" aria-label="View company detail for ${esc(v.name)}" style="cursor:pointer" title="Click for full company detail"><div class="rk">${v.rank}</div>
     <div class="nm">${esc(v.name)} <span class="tag ${tierClass(v.tier)}">${esc(v.tier)}</span> <span class="tag tNi">${esc(fmt(v.niche))}</span></div>
     <div class="ct">${esc(v.category)} · booth ${fmt(v.booth)}</div>
     <div class="scores">${scoreChips(v)}</div>
@@ -917,7 +919,6 @@ draw();
   function close(){box.classList.remove('on');box.innerHTML='';items=[];act=-1;}
   function pick(v){var set=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;set.call(inp,v.name);inp.dispatchEvent(new Event('input',{bubbles:true}));close();var t=document.getElementById('vtable');if(t)t.scrollIntoView({behavior:'smooth',block:'start'});}
   function hi(){[].forEach.call(box.querySelectorAll('.sug[data-i]'),function(el){var on=(+el.dataset.i===act);el.classList.toggle('act',on);if(on)el.scrollIntoView({block:'nearest'});});}
-  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
   function build(){
     var q=inp.value.trim().toLowerCase();
     if(!q){close();return;}
