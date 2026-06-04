@@ -309,7 +309,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .ovr b{font-size:22px;color:var(--text)}.ovr span{font-size:10.5px;color:var(--muted)}
   .tag{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:700}
   .tA{background:rgba(52,211,153,.16);color:var(--A)}.tB{background:rgba(251,191,36,.16);color:var(--B)}
-  .tC{background:rgba(96,165,250,.18);color:#93c5fd}.tD{background:rgba(96,165,250,.18);color:#93c5fd}
+  .tC{background:rgba(96,165,250,.18);color:#93c5fd}.tD{background:rgba(59,130,246,.2);color:#3b82f6}
   .tNi{background:rgba(41,181,232,.16);color:#7fd6f5;border:1px solid rgba(41,181,232,.3)}
   /* Print / Save-as-PDF: keep the dark theme (so the canvas charts render as on
      screen), hide interactive controls, and expand the table so the WHOLE
