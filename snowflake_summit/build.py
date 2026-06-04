@@ -289,11 +289,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .sub{color:var(--muted);font-size:12.5px;margin-top:4px}
   .dl{background:var(--accent2);border:1px solid var(--accent);color:#dff3ff;padding:8px 13px;border-radius:9px;font-size:12.5px;text-decoration:none;white-space:nowrap}
   /* Per-vendor homepage link (↗) rendered next to each partner name + in the detail sheet. */
-  .homelink{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;margin-left:5px;color:var(--muted);text-decoration:none;font-size:12px;font-weight:700;line-height:1;border-radius:5px;vertical-align:baseline;opacity:.72;transition:opacity .15s,color .15s,background .15s}
-  .homelink:hover,.homelink:focus{color:var(--accent);opacity:1;background:rgba(41,181,232,.12)}
+  .homelink{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;margin-left:2px;color:var(--muted);text-decoration:none;font-size:12px;font-weight:700;line-height:1;border-radius:5px;vertical-align:baseline;opacity:1;transition:color .15s,background .15s}
+  .homelink:hover,.homelink:focus{color:var(--accent);background:rgba(41,181,232,.12)}
   .homelink:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
   .homedl{font-size:12.5px}
-  @media(max-width:640px){.homelink{width:26px;height:26px;font-size:14px;margin-left:3px}}
+  @media(max-width:640px){.homelink{width:26px;height:26px;font-size:14px}}
   .dl:hover{background:#176a9c}
   .wrap{max-width:1320px;margin:0 auto;padding:20px 24px 60px}
   .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin:6px 0 24px}
@@ -325,7 +325,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     @page{margin:9mm}
     html,body{background:#0b1020 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     html{zoom:.55 !important}
-    .no-print,.dl,.controls,#search,#mqBack,#mqSegSel{display:none !important}
+    .no-print,.dl,.homelink,.controls,#search,#mqBack,#mqSegSel{display:none !important}
     .wrap{width:1320px;max-width:none;padding:6px}
     .panel,.card2,.kpi,canvas,.nitem{break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     h3.sec{break-after:avoid;page-break-after:avoid}
@@ -915,8 +915,8 @@ const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
 // DuckDuckGo "!ducky" I'm-Feeling-Lucky redirect to the top result (Tier C fallback),
 // so every partner name links through to a site. homeLink()'s stopPropagation keeps
 // the click from also firing the card/row -> detail-modal delegation (see vModal).
-function homeUrl(v){return (v&&v.website)?v.website:'https://duckduckgo.com/?q='+encodeURIComponent('!ducky '+((v&&v.name)||''));}
-function homeLink(v){var real=!!(v&&v.website),u=homeUrl(v),nm=esc((v&&v.name)||'');return '<a class="homelink" href="'+esc(u)+'" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" title="'+(real?'Visit homepage':'Find homepage')+' ↗" aria-label="'+(real?'Visit ':'Find ')+nm+' homepage (opens in a new tab)">↗</a>';}
+function homeUrl(v){var w=(v&&v.website)?String(v.website).trim():'';return /^https?:\/\//i.test(w)?w:'https://duckduckgo.com/?q='+encodeURIComponent('!ducky '+((v&&v.name)||''));}
+function homeLink(v){var w=(v&&v.website)?String(v.website).trim():'',real=/^https?:\/\//i.test(w),u=homeUrl(v),nm=esc((v&&v.name)||'');return '<a class="homelink" href="'+esc(u)+'" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" title="'+(real?'Visit homepage':'Search for homepage')+' ↗" aria-label="'+(real?'Visit '+nm+' homepage':'Search the web for '+nm)+' (opens in a new tab)">↗</a>';}
 const tierClass = t => ({A:'tA',B:'tB',C:'tC',D:'tD'})[t]||'tC';
 
 // View router: ?view=news opens the news-only view (in its own window).
@@ -1122,7 +1122,7 @@ function draw(){
     if(vc) vc.innerHTML=r.map(function(v){
       var w=Math.round(((v.overall_score||0)/10)*54)+6;
       return '<div class="vcard'+(v.hidden_gem?' gem':'')+'" data-v="'+esc(v.name)+'" role="button" tabindex="0" aria-label="View company detail for '+esc(v.name)+'">'+
-        '<div class="vcard-top"><span class="vcard-rank">#'+v.rank+'</span><span class="vcard-name">'+esc(v.name)+'</span>'+homeLink(v)+'<span class="tag '+tierClass(v.tier)+'">'+esc(v.tier)+'</span></div>'+
+        '<div class="vcard-top"><span class="vcard-rank">#'+v.rank+'</span><span class="vcard-name">'+esc(v.name)+homeLink(v)+'</span><span class="tag '+tierClass(v.tier)+'">'+esc(v.tier)+'</span></div>'+
         '<div class="vcard-meta"><span class="tag tNi">'+esc(fmt(v.niche))+'</span> · booth '+esc(fmt(v.booth))+' · '+esc(fmt(v.category))+'</div>'+
         '<div class="vcard-score"><span class="ovrbar" style="width:'+w+'px;background:'+tierColor(v.tier)+'"></span><b>'+fmt(v.overall_score)+'</b> <span>/ 10'+(v.company_type?(' · '+esc(v.company_type)):'')+'</span></div>'+
         '</div>';
@@ -1537,7 +1537,7 @@ draw();
       +'<div class="vrow"><span class="k">Overall</span><span class="vv">'+fmt(v.overall_score)+' / 10</span></div>';
     body.innerHTML='<h2 id="vModalTitle">'+esc(v.name)+'</h2> <span class="tag '+tierClass(v.tier)+'">'+esc(v.tier)+'</span> <span class="tag tNi">'+esc(fmt(v.niche))+'</span>'+
       '<div class="sub" style="margin-top:5px">'+esc(fmt(v.category))+' · booth '+esc(fmt(v.booth))+(v.company_type?(' · '+esc(v.company_type)):'')+'</div>'+
-      '<div style="margin-top:11px"><a class="dl homedl" href="'+esc(homeUrl(v))+'" target="_blank" rel="noopener noreferrer">'+(v.website?'🌐 Visit homepage':'🔎 Find homepage')+' ↗</a></div>'+
+      '<div style="margin-top:11px"><a class="dl homedl" href="'+esc(homeUrl(v))+'" target="_blank" rel="noopener noreferrer" aria-label="'+(v.website?'Visit homepage':'Search the web for homepage')+', opens in a new tab">'+(v.website?'🌐 Visit homepage':'🔎 Find homepage')+' ↗</a></div>'+
       '<div class="vsec">Company</div>'+(company||'<div class="sub" style="padding:6px 0">No funding / valuation data on file yet.</div>')+
       '<div class="vsec">Scores</div>'+scores+
       (v.notes?('<div class="vsec">Notes</div><div class="vrow" style="border:none"><span class="vv" style="font-weight:400;line-height:1.55">'+esc(v.notes)+'</span></div>'):'')+
