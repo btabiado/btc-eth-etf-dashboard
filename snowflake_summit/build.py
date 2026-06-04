@@ -557,14 +557,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <div class="cards" id="mustsee"></div>
 
   <div class="grid" style="margin-top:22px">
-    <div class="panel"><h4>Top 15 by Overall Score</h4><canvas id="topChart"></canvas></div>
-    <div class="panel"><h4>Priority Tier mix</h4><canvas id="tierChart"></canvas></div>
+    <div class="panel"><h4>Top 15 by Overall Score</h4><canvas id="topChart" role="img" aria-label="Bar chart: the 15 highest-scoring partners by overall score (0–10)."></canvas></div>
+    <div class="panel"><h4>Priority Tier mix</h4><canvas id="tierChart" role="img" aria-label="Doughnut chart: partner counts by priority tier (A, B, C)."></canvas></div>
   </div>
   <div class="grid">
-    <div class="panel"><h4>Partners by Niche</h4><canvas id="nicheChart"></canvas></div>
-    <div class="panel"><h4>Avg score profile — Tier A vs all</h4><canvas id="profChart"></canvas></div>
+    <div class="panel"><h4>Partners by Niche</h4><canvas id="nicheChart" role="img" aria-label="Bar chart: partner counts grouped by value niche."></canvas></div>
+    <div class="panel"><h4>Avg score profile — Tier A vs all</h4><canvas id="profChart" role="img" aria-label="Radar chart: average score profile across the five dimensions, Tier A versus all partners."></canvas></div>
   </div>
-  <div class="panel" style="margin-bottom:16px"><h4>💰 Top 15 by Valuation <span class="hint" style="font-weight:400;color:var(--muted)">— parsed from reported valuation / market cap; hover for detail</span></h4><canvas id="valChart" style="max-height:380px"></canvas></div>
+  <div class="panel" style="margin-bottom:16px"><h4>💰 Top 15 by Valuation <span class="hint" style="font-weight:400;color:var(--muted)">— parsed from reported valuation / market cap; hover for detail</span></h4><canvas id="valChart" style="max-height:380px" role="img" aria-label="Bar chart: the 15 partners with the highest reported valuation or market cap."></canvas></div>
 
   <h3 class="sec">💎 Hidden Gems <span class="hint">— Overall ≥ 7 but not Tier A</span></h3>
   <div class="cards" id="gems"></div>
@@ -658,7 +658,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <div id="mqLegend" class="sub" style="margin-bottom:8px"></div>
       <div id="mqQuadChips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
       <div style="height:560px;position:relative">
-        <canvas id="mqChart" style="max-height:560px"></canvas>
+        <canvas id="mqChart" style="max-height:560px" role="img" aria-label="Magic Quadrant scatter plot: partners positioned by Ability to Execute (vertical) and Completeness of Vision (horizontal), split into Leaders, Challengers, Visionaries, and Niche Players."></canvas>
       </div>
       <div id="mqCaveat" class="sub" style="margin-top:12px;line-height:1.5;color:#cfe0ff"></div>
       <div class="sub" style="margin-top:10px;line-height:1.55">
