@@ -288,6 +288,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   h1{font-size:24px;font-weight:800;margin:0;letter-spacing:.01em}
   .sub{color:var(--muted);font-size:12.5px;margin-top:4px}
   .dl{background:var(--accent2);border:1px solid var(--accent);color:#dff3ff;padding:8px 13px;border-radius:9px;font-size:12.5px;text-decoration:none;white-space:nowrap}
+  /* Per-vendor homepage link (↗) rendered next to each partner name + in the detail sheet. */
+  .homelink{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;margin-left:5px;color:var(--muted);text-decoration:none;font-size:12px;font-weight:700;line-height:1;border-radius:5px;vertical-align:baseline;opacity:.72;transition:opacity .15s,color .15s,background .15s}
+  .homelink:hover,.homelink:focus{color:var(--accent);opacity:1;background:rgba(41,181,232,.12)}
+  .homelink:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  .homedl{font-size:12.5px}
+  @media(max-width:640px){.homelink{width:26px;height:26px;font-size:14px;margin-left:3px}}
   .dl:hover{background:#176a9c}
   .wrap{max-width:1320px;margin:0 auto;padding:20px 24px 60px}
   .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin:6px 0 24px}
@@ -702,6 +708,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <a class="dl" href="?view=news" target="_blank" rel="noopener" title="Opens the partner news feed in its own window">📰 Summit News ↗</a>
       <a class="dl" href="?view=mq" target="_blank" rel="noopener" title="Opens the Magic Quadrant in its own window">📊 Magic Quadrant ↗</a>
       <a class="dl" href="?view=map" target="_blank" rel="noopener" title="Opens the interactive Basecamp floor map in its own window">🗺 Floor Map ↗</a>
+      <a class="dl" href="https://reg.snowflake.com/flow/snowflake/summit26/partner/page/catalog" target="_blank" rel="noopener" title="Snowflake's official Summit 2026 partner catalog — all 190+ partners (opens on snowflake.com)">🤝 All Partner Vendors ↗</a>
       <a class="dl" href="Snowflake_Summit_2026_Master_Partner_Scouting.xlsx" download>⬇ Download source spreadsheet</a>
       <button class="dl no-print pdfBtn" id="pdfBtn" type="button" style="cursor:pointer" title="Print the whole dashboard or save it as a PDF">⬇ Download PDF</button>
       <span class="zoomctl" title="Zoom"><button type="button" class="zbtn" data-zoom="out" aria-label="Zoom out">🔍−</button><span class="zlevel">100%</span><button type="button" class="zbtn" data-zoom="in" aria-label="Zoom in">🔍+</button></span>
@@ -716,6 +723,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <div class="toolsheet-grip" aria-hidden="true"></div>
   <button type="button" class="toolsheet-item scoreInfoTrigger" aria-haspopup="dialog" aria-controls="scorePop">ⓘ <span>Scoring — how the scores work</span></button>
   <a class="toolsheet-item" href="?view=news" target="_blank" rel="noopener">📰 <span>Summit News</span></a>
+  <a class="toolsheet-item" href="https://reg.snowflake.com/flow/snowflake/summit26/partner/page/catalog" target="_blank" rel="noopener">🤝 <span>All Partner Vendors</span></a>
   <a class="toolsheet-item" href="Snowflake_Summit_2026_Master_Partner_Scouting.xlsx" download>⬇ <span>Download source spreadsheet</span></a>
   <button type="button" class="toolsheet-item pdfBtn">⬇ <span>Download PDF</span></button>
 </div>
@@ -903,6 +911,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 const DATA = /*__DATA__*/;
 const fmt = n => (n===null||n===undefined||n==='')?"—":n;
 const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+// Per-vendor homepage. Real curated URL (Tier A/B) when v.website is set; else a
+// DuckDuckGo "!ducky" I'm-Feeling-Lucky redirect to the top result (Tier C fallback),
+// so every partner name links through to a site. homeLink()'s stopPropagation keeps
+// the click from also firing the card/row -> detail-modal delegation (see vModal).
+function homeUrl(v){return (v&&v.website)?v.website:'https://duckduckgo.com/?q='+encodeURIComponent('!ducky '+((v&&v.name)||''));}
+function homeLink(v){var real=!!(v&&v.website),u=homeUrl(v),nm=esc((v&&v.name)||'');return '<a class="homelink" href="'+esc(u)+'" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" title="'+(real?'Visit homepage':'Find homepage')+' ↗" aria-label="'+(real?'Visit ':'Find ')+nm+' homepage (opens in a new tab)">↗</a>';}
 const tierClass = t => ({A:'tA',B:'tB',C:'tC',D:'tD'})[t]||'tC';
 
 // View router: ?view=news opens the news-only view (in its own window).
@@ -980,7 +994,7 @@ function scoreChips(v){
 }
 function card(v){
   return `<div class="card2" data-v="${esc(v.name)}" tabindex="0" role="button" aria-label="View company detail for ${esc(v.name)}" style="cursor:pointer" title="Click for full company detail"><div class="rk">${v.rank}</div>
-    <div class="nm">${esc(v.name)} <span class="tag ${tierClass(v.tier)}">${esc(v.tier)}</span> <span class="tag tNi">${esc(fmt(v.niche))}</span></div>
+    <div class="nm">${esc(v.name)}${homeLink(v)} <span class="tag ${tierClass(v.tier)}">${esc(v.tier)}</span> <span class="tag tNi">${esc(fmt(v.niche))}</span></div>
     <div class="ct">${esc(v.category)} · booth ${fmt(v.booth)}</div>
     <div class="scores">${scoreChips(v)}</div>
     <div class="ovr"><b>${fmt(v.overall_score)}</b><span>/ 10 overall${v.company_type?(' · '+esc(v.company_type)):''}</span></div></div>`;
@@ -1108,7 +1122,7 @@ function draw(){
     if(vc) vc.innerHTML=r.map(function(v){
       var w=Math.round(((v.overall_score||0)/10)*54)+6;
       return '<div class="vcard'+(v.hidden_gem?' gem':'')+'" data-v="'+esc(v.name)+'" role="button" tabindex="0" aria-label="View company detail for '+esc(v.name)+'">'+
-        '<div class="vcard-top"><span class="vcard-rank">#'+v.rank+'</span><span class="vcard-name">'+esc(v.name)+'</span><span class="tag '+tierClass(v.tier)+'">'+esc(v.tier)+'</span></div>'+
+        '<div class="vcard-top"><span class="vcard-rank">#'+v.rank+'</span><span class="vcard-name">'+esc(v.name)+'</span>'+homeLink(v)+'<span class="tag '+tierClass(v.tier)+'">'+esc(v.tier)+'</span></div>'+
         '<div class="vcard-meta"><span class="tag tNi">'+esc(fmt(v.niche))+'</span> · booth '+esc(fmt(v.booth))+' · '+esc(fmt(v.category))+'</div>'+
         '<div class="vcard-score"><span class="ovrbar" style="width:'+w+'px;background:'+tierColor(v.tier)+'"></span><b>'+fmt(v.overall_score)+'</b> <span>/ 10'+(v.company_type?(' · '+esc(v.company_type)):'')+'</span></div>'+
         '</div>';
@@ -1118,7 +1132,7 @@ function draw(){
   tbody.innerHTML=r.map(v=>{
     const w=Math.round(((v.overall_score||0)/10)*54)+6;
     return `<tr class="${v.hidden_gem?'gem-row':''}" data-v="${esc(v.name)}" tabindex="0" aria-label="View company detail for ${esc(v.name)}" style="cursor:pointer">
-      <td class="num">${v.rank}</td><td class="name">${esc(v.name)}</td><td>${fmt(v.booth)}</td>
+      <td class="num">${v.rank}</td><td class="name">${esc(v.name)}${homeLink(v)}</td><td>${fmt(v.booth)}</td>
       <td><span class="tag tNi">${esc(fmt(v.niche))}</span></td><td>${esc(fmt(v.category))}</td><td>${esc(fmt(v.company_type))}</td>
       <td class="num">${fmt(v.snowflake_score)}</td><td class="num">${fmt(v.ai_score)}</td>
       <td class="num">${fmt(v.retail_score)}</td><td class="num">${fmt(v.ipo_score)}</td><td class="num">${fmt(v.bryan_score)}</td>
@@ -1523,6 +1537,7 @@ draw();
       +'<div class="vrow"><span class="k">Overall</span><span class="vv">'+fmt(v.overall_score)+' / 10</span></div>';
     body.innerHTML='<h2 id="vModalTitle">'+esc(v.name)+'</h2> <span class="tag '+tierClass(v.tier)+'">'+esc(v.tier)+'</span> <span class="tag tNi">'+esc(fmt(v.niche))+'</span>'+
       '<div class="sub" style="margin-top:5px">'+esc(fmt(v.category))+' · booth '+esc(fmt(v.booth))+(v.company_type?(' · '+esc(v.company_type)):'')+'</div>'+
+      '<div style="margin-top:11px"><a class="dl homedl" href="'+esc(homeUrl(v))+'" target="_blank" rel="noopener noreferrer">'+(v.website?'🌐 Visit homepage':'🔎 Find homepage')+' ↗</a></div>'+
       '<div class="vsec">Company</div>'+(company||'<div class="sub" style="padding:6px 0">No funding / valuation data on file yet.</div>')+
       '<div class="vsec">Scores</div>'+scores+
       (v.notes?('<div class="vsec">Notes</div><div class="vrow" style="border:none"><span class="vv" style="font-weight:400;line-height:1.55">'+esc(v.notes)+'</span></div>'):'')+
@@ -1549,7 +1564,7 @@ draw();
     if(m.classList.contains('on'))return;
     if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){
       var a=document.activeElement, el=a&&a.closest&&a.closest('[data-v]');
-      if(el){var n=el.getAttribute('data-v');if(n&&byName[n]){e.preventDefault();open(n);}}
+      if(el&&el===a){var n=el.getAttribute('data-v');if(n&&byName[n]){e.preventDefault();open(n);}}
     }
   });
 })();
