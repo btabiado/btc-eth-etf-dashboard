@@ -1,20 +1,20 @@
 # LTHCS Backtest Engine Report
 
-Window: **2026-02-17 -> 2026-06-03** (75 trading days)
+Window: **2026-02-17 -> 2026-06-04** (76 trading days)
 Universe: **209 tickers** | long bands: ['constructive', 'elite', 'high_confidence'] | cost: 5.0 bps/side | delay: 1 td
 
 ## Headline P&L (non-overlapping)
 
 | Metric | Value |
 |:-------|------:|
-| Total return | +0.2468 |
-| Annualized return | +1.1197 |
-| Annualized Sharpe | +3.046 (95% CI: -0.57 ... +7.20) |
-| Annualized Sortino | +3.005 (95% CI: -0.55 ... +8.18) |
+| Total return | +0.2323 |
+| Annualized return | +1.0173 |
+| Annualized Sharpe | +2.857 (95% CI: -0.64 ... +6.62) |
+| Annualized Sortino | +2.839 (95% CI: -0.64 ... +7.08) |
 | Max drawdown | -0.1058 |
-| Hit rate (daily) | 0.613 |
+| Hit rate (daily) | 0.605 |
 | Avg hold days | 7.4 |
-| Avg turnover / day | 0.1937 |
+| Avg turnover / day | 0.1912 |
 | Total trades | 55 |
 | Unique tickers | 22 |
 
@@ -25,21 +25,21 @@ Universe: **209 tickers** | long bands: ['constructive', 'elite', 'high_confiden
 | Band | Total return |
 |:-----|------:|
 | elite | +0.0000 |
-| high_confidence | +0.5873 |
-| constructive | +0.1869 |
-| monitor | +0.1014 |
-| weakening | +0.0879 |
-| review | +0.0133 |
+| high_confidence | +0.4644 |
+| constructive | +0.1795 |
+| monitor | +0.1079 |
+| weakening | +0.0984 |
+| review | +0.0216 |
 
 ## Benchmark
 
-Benchmark total return: **+0.1076**
+Benchmark total return: **+0.1117**
 
 ## Run metadata
 
 ```json
 {
-  "band_hash": "263c091626fdbaea",
+  "band_hash": "c1dac5e8deb44811",
   "engine_version": "1.0.0",
   "long_set": [
     "constructive",
@@ -62,15 +62,15 @@ Benchmark total return: **+0.1076**
     "top_k": 0
   },
   "params_hash": "49269b2e937d327d",
-  "price_hash": "2b3ebc37a6e03dbb",
+  "price_hash": "dedf83bc28ec44e1",
   "profile_name": "long_only_buy",
   "short_bottom_quintile": false,
   "short_set": [],
   "top_k": 0,
   "universe_size": 209,
   "window": {
-    "end": "2026-06-03",
-    "n_trading_days": 75,
+    "end": "2026-06-04",
+    "n_trading_days": 76,
     "start": "2026-02-17"
   }
 }
